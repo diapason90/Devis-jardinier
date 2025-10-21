@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Devis & Factures - Jardinier Christophe</title>
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>🌿 Jardinier Christophe</h1>
+      <p>Création rapide de devis ou factures professionnelles</p>
+    </header>
+
+    <div class="content">
+
+      <div class="card">
+        <h3>📋 Type de document</h3>
+        <label><input type="radio" name="docType" value="devis" checked> Devis</label>
+        <label><input type="radio" name="docType" value="facture"> Facture</label>
+      </div>
+
+      <div class="card">
+        <h3>👤 Informations client</h3>
+        <label>Nom du client *</label>
+        <input type="text" id="nomClient" required>
+
+        <label>Adresse *</label>
+        <input type="text" id="adresseClient" required>
+
+        <label>Téléphone</label>
+        <input type="tel" id="telClient">
+      </div>
+
+      <div class="card">
+        <h3>⚒️ Prestations</h3>
+        <div id="prestationList"></div>
+        <button class="btn-add" onclick="addCustom()">+ Ajouter une prestation</button>
+      </div>
+
+      <div class="card">
+        <h3>🚗 Déplacement</h3>
+        <label>Kilomètres (0,25 €/km)</label>
+        <input type="number" id="km" min="0" step="1" onchange="updateTotal()">
+      </div>
+
+      <div class="card">
+        <h3>💰 Récapitulatif</h3>
+        <div class="summary">
+          <p>Sous-total HTVA : <span id="sousTotal">0,00 €</span></p>
+          <p>TVA (21%) : <span id="tva">0,00 €</span></p>
+          <p class="total">Total TTC : <span id="total">0,00 €</span></p>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn-primary" onclick="generatePDF()">📄 Générer PDF</button>
+        <button class="btn-secondary" onclick="saveDraft()">💾 Sauvegarder</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="assets/script.js"></script>
+</body>
+</html>
