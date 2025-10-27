@@ -1,102 +1,139 @@
+/*
+ * Styles pour l'application ChrisGarden.
+ * Palette de vert et gris pour un rendu moderne et professionnel.
+ */
+
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #f4f7f5;
   margin: 0;
-  padding: 20px;
+  font-family: Arial, Helvetica, sans-serif;
+  background-color: #f7faf7;
   color: #1f2937;
 }
 
-.container {
-  max-width: 600px;
-  margin: auto;
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-  overflow: hidden;
-}
-
+/* Bandeau vert en haut de la page */
 .header {
-  background: linear-gradient(135deg, #15803d, #2563eb);
-  color: white;
+  background-color: #15803d;
+  color: #ffffff;
+  padding: 20px 10px;
   text-align: center;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 2rem;
+}
+
+.header p {
+  margin: 5px 0 0 0;
+  font-size: 1rem;
+  font-weight: 300;
+}
+
+/* Conteneur principal */
+.main-container {
+  max-width: 700px;
+  margin: 0 auto;
   padding: 20px;
 }
 
-h3 {
-  color: #15803d;
-  margin-bottom: 10px;
-}
-
+/* Cartes pour organiser les sections */
 .card {
+  background-color: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
   padding: 20px;
-  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.card h2 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  color: #15803d;
+  font-size: 1.25rem;
 }
 
 label {
   display: block;
-  font-weight: 600;
+  font-weight: bold;
   margin-bottom: 4px;
 }
 
-input[type="text"], input[type="tel"], input[type="number"] {
+input[type="text"],
+input[type="tel"],
+input[type="number"] {
   width: 100%;
   padding: 10px;
   margin-bottom: 12px;
   border: 1px solid #d1d5db;
   border-radius: 8px;
+  box-sizing: border-box;
 }
 
-.btn-add, .btn-primary, .btn-secondary {
+/* Boutons */
+.btn-add,
+.btn-primary,
+.btn-secondary {
   cursor: pointer;
   border: none;
   border-radius: 8px;
   padding: 10px 16px;
-  font-weight: 600;
-  transition: background 0.3s;
+  font-weight: bold;
+  transition: background-color 0.2s ease;
+  font-size: 0.9rem;
 }
 
 .btn-add {
-  background: #16a34a;
-  color: white;
+  background-color: #10b981;
+  color: #ffffff;
+}
+
+.btn-add:hover {
+  background-color: #0e9770;
 }
 
 .btn-primary {
-  background: #15803d;
-  color: white;
+  background-color: #15803d;
+  color: #ffffff;
+}
+
+.btn-primary:hover {
+  background-color: #11602a;
 }
 
 .btn-secondary {
-  background: #2563eb;
-  color: white;
+  background-color: #2563eb;
+  color: #ffffff;
 }
 
-.btn-add:hover { background: #128038; }
-.btn-primary:hover { background: #0e622c; }
-.btn-secondary:hover { background: #1d4ed8; }
+.btn-secondary:hover {
+  background-color: #1e50c2;
+}
 
+/* Résumé des calculs */
 .summary {
-  background: #f0fdf4;
+  background-color: #f0fdf4;
   padding: 10px;
   border-radius: 8px;
-}
-
-.summary p {
-  margin: 4px 0;
+  font-size: 0.95rem;
 }
 
 .summary .total {
-  font-size: 18px;
+  font-size: 1.1rem;
   font-weight: bold;
   color: #15803d;
 }
 
+/* Section des actions */
 .actions {
   display: flex;
+  justify-content: space-between;
   gap: 10px;
-  padding: 20px;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
 }
 
-@media (max-width: 500px) {
+@media (max-width: 600px) {
   .actions {
     flex-direction: column;
   }
