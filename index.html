@@ -2,64 +2,75 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Devis & Factures - Jardinier Christophe</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ChrisGarden - Devis et Factures</title>
   <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
-  <div class="container">
-    <header class="header">
-      <h1>🌿 Jardinier Christophe</h1>
-      <p>Création rapide de devis ou factures professionnelles</p>
-    </header>
-
-    <div class="content">
-
-      <div class="card">
-        <h3>📋 Type de document</h3>
-        <label><input type="radio" name="docType" value="devis" checked> Devis</label>
-        <label><input type="radio" name="docType" value="facture"> Facture</label>
-      </div>
-
-      <div class="card">
-        <h3>👤 Informations client</h3>
-        <label>Nom du client *</label>
-        <input type="text" id="nomClient" required>
-
-        <label>Adresse *</label>
-        <input type="text" id="adresseClient" required>
-
-        <label>Téléphone</label>
-        <input type="tel" id="telClient">
-      </div>
-
-      <div class="card">
-        <h3>⚒️ Prestations</h3>
-        <div id="prestationList"></div>
-        <button class="btn-add" onclick="addCustom()">+ Ajouter une prestation</button>
-      </div>
-
-      <div class="card">
-        <h3>🚗 Déplacement</h3>
-        <label>Kilomètres (0,25 €/km)</label>
-        <input type="number" id="km" min="0" step="1" onchange="updateTotal()">
-      </div>
-
-      <div class="card">
-        <h3>💰 Récapitulatif</h3>
-        <div class="summary">
-          <p>Sous-total HTVA : <span id="sousTotal">0,00 €</span></p>
-          <p>TVA (21%) : <span id="tva">0,00 €</span></p>
-          <p class="total">Total TTC : <span id="total">0,00 €</span></p>
-        </div>
-      </div>
-
-      <div class="actions">
-        <button class="btn-primary" onclick="generatePDF()">📄 Générer PDF</button>
-        <button class="btn-secondary" onclick="saveDraft()">💾 Sauvegarder</button>
-      </div>
+  <!-- En-tête avec bandeau vert -->
+  <header class="header">
+    <div class="header-content">
+      <h1>ChrisGarden</h1>
+      <p>Création de devis et factures professionnelles</p>
     </div>
-  </div>
+  </header>
+
+  <main class="main-container">
+    <!-- Sélection du type de document -->
+    <section class="card">
+      <h2>Type de document</h2>
+      <label><input type="radio" name="docType" value="devis" checked> Devis</label>
+      <label><input type="radio" name="docType" value="facture"> Facture</label>
+    </section>
+
+    <!-- Sélection du taux de TVA -->
+    <section class="card">
+      <h2>Taux de TVA</h2>
+      <label><input type="radio" name="tvaRate" value="0" checked>0&nbsp;%</label>
+      <label><input type="radio" name="tvaRate" value="6">6&nbsp;%</label>
+      <label><input type="radio" name="tvaRate" value="21">21&nbsp;%</label>
+    </section>
+
+    <!-- Informations sur le client -->
+    <section class="card">
+      <h2>Informations client</h2>
+      <label>Nom du client *</label>
+      <input type="text" id="nomClient" required>
+      <label>Adresse *</label>
+      <input type="text" id="adresseClient" required>
+      <label>Téléphone</label>
+      <input type="tel" id="telClient">
+    </section>
+
+    <!-- Liste des prestations -->
+    <section class="card">
+      <h2>Prestations</h2>
+      <div id="prestationList"></div>
+      <button class="btn-add" onclick="addCustom()">+&nbsp;Ajouter une prestation</button>
+    </section>
+
+    <!-- Frais de déplacement -->
+    <section class="card">
+      <h2>Déplacement</h2>
+      <label>Kilomètres (0,25&nbsp;€/km)</label>
+      <input type="number" id="km" min="0" step="1" onchange="updateTotal()">
+    </section>
+
+    <!-- Récapitulatif -->
+    <section class="card">
+      <h2>Récapitulatif</h2>
+      <div class="summary">
+        <p>Sous-total&nbsp;HTVA&nbsp;: <span id="sousTotal">0,00&nbsp;€</span></p>
+        <p>TVA&nbsp;: <span id="tva">0,00&nbsp;€</span></p>
+        <p class="total">Total&nbsp;TTC&nbsp;: <span id="total">0,00&nbsp;€</span></p>
+      </div>
+    </section>
+
+    <section class="actions">
+      <button class="btn-primary" onclick="generatePDF()">Générer&nbsp;PDF</button>
+      <button class="btn-secondary" onclick="saveDraft()">Sauvegarder</button>
+    </section>
+  </main>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="assets/script.js"></script>
