@@ -118,6 +118,30 @@ function setupEventListeners() {
       if (e.target === modal) closeClientModal();
     });
   }
+
+  // Barre quick-nav (Documents / Clients / Templates / Export)
+  document.querySelectorAll('.nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const section = btn.dataset.section;
+
+      if (section === 'clients') {
+        window.location.href = 'clients.html';
+        return;
+      }
+
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      if (section === 'form') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else if (section === 'templates') {
+        document.querySelector('.templates-bar')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else if (section === 'export') {
+        exportCSV();
+      }
+    });
+  });
 }
 
 function updateTVALabel() {

@@ -120,11 +120,17 @@
         </div>
 
         <div class="modal-actions">
-          <button class="btn-tertiary" onclick="closeModal()">Annuler</button>
-          <button class="btn-primary" onclick="saveClient()">
+          <button class="btn-tertiary" onclick="closeModal()" title="Esc">Annuler</button>
+          <button class="btn-secondary" id="btnSaveContinue" onclick="saveClient(true)" title="Ctrl+Entrée — enregistrer et encoder le suivant">
+            <i class="fas fa-plus"></i> Enregistrer + nouveau
+          </button>
+          <button class="btn-primary" onclick="saveClient(false)" title="Entrée">
             <i class="fas fa-save"></i> Enregistrer
           </button>
         </div>
+        <p class="kbd-hint">
+          <kbd>Tab</kbd> champ suivant · <kbd>Entrée</kbd> enregistrer · <kbd>Ctrl</kbd>+<kbd>Entrée</kbd> enregistrer + nouveau · <kbd>Esc</kbd> fermer
+        </p>
       </div>
     </div>
   </div>
@@ -149,10 +155,27 @@
     </div>
   </div>
 
+  <!-- Conteneur des notifications toast -->
+  <div id="toastContainer" class="toast-container"></div>
+
   <script src="assets/clients.js"></script>
   <script>
     const CLIENTS_KEY = 'chrisgarden_clients_v2';
     let pendingDeleteId = null;
+    let sessionAdded = 0;
+
+    // ── Toast ────────────────────────────────────────────────
+    function showToast(msg, icon = 'check-circle') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      toast.innerHTML = `<i class="fas fa-${icon}"></i> <span>${msg}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.classList.add('toast-out');
+        setTimeout(() => toast.remove(), 300);
+      }, 2500);
+    }
 
     // ── Données ──────────────────────────────────────────────
     function getAllClients() {
@@ -207,7 +230,11 @@
 
     function filterClients() {
       const q = document.getElementById('searchInput').value.toLowerCase();
-      const all = getAllClients();
+      const all = getAllClients().sort((a, b) => {
+        const an = `${a.nom} ${a.prenom}`.toLowerCase();
+        const bn = `${b.nom} ${b.prenom}`.toLowerCase();
+        return an.localeCompare(bn, 'fr');
+      });
       const filtered = q
         ? all.filter(c =>
             `${c.nom} ${c.prenom} ${c.adresse} ${c.tel} ${c.commentaire}`.toLowerCase().includes(q)
@@ -221,6 +248,8 @@
       document.getElementById('formError').style.display = 'none';
       document.getElementById('editId').value = id || '';
       document.getElementById('modalTitle').textContent = id ? 'Modifier le client' : 'Nouveau client';
+      // Le bouton "Enregistrer + nouveau" n'a pas de sens en édition
+      document.getElementById('btnSaveContinue').style.display = id ? 'none' : '';
 
       if (id) {
         const client = getAllClients().find(c => c.id === id);
@@ -262,13 +291,14 @@
       document.getElementById('formError').style.display = 'flex';
     }
 
-    function saveClient() {
+    function saveClient(continueAdding = false) {
       const nom         = validateText(document.getElementById('fNom').value);
       const prenom      = validateText(document.getElementById('fPrenom').value);
       const adresse     = validateText(document.getElementById('fAdresse').value);
       const tel         = validateText(document.getElementById('fTel').value, 20);
       const commentaire = validateText(document.getElementById('fCommentaire').value, 500);
       const editId      = document.getElementById('editId').value;
+      const wasEdit     = !!editId;
 
       if (!nom || !prenom) {
         showFormError('Le nom et le prénom sont obligatoires.');
@@ -292,11 +322,28 @@
           nom, prenom, adresse, tel, commentaire,
           created: new Date().toISOString()
         });
+        sessionAdded++;
       }
 
       storeClients(clients);
-      closeModal();
       filterClients();
+
+      if (continueAdding && !wasEdit) {
+        // Vide les champs et reste dans la modal pour encoder le suivant
+        document.getElementById('editId').value       = '';
+        document.getElementById('fNom').value         = '';
+        document.getElementById('fPrenom').value      = '';
+        document.getElementById('fAdresse').value     = '';
+        document.getElementById('fTel').value         = '';
+        document.getElementById('fCommentaire').value = '';
+        document.getElementById('formError').style.display = 'none';
+        updateCharCount();
+        document.getElementById('fNom').focus();
+        showToast(`Client ajouté (${sessionAdded} cette session) — au suivant !`);
+      } else {
+        closeModal();
+        showToast(wasEdit ? 'Modifications enregistrées' : 'Client enregistré');
+      }
     }
 
     // ── Suppression ──────────────────────────────────────────
@@ -321,6 +368,42 @@
       closeDeleteModal();
       filterClients();
     }
+
+    // ── Raccourcis clavier ───────────────────────────────────
+    document.addEventListener('keydown', (e) => {
+      const modal       = document.getElementById('clientModal');
+      const deleteModal = document.getElementById('deleteModal');
+      const modalOpen   = modal.classList.contains('active');
+      const deleteOpen  = deleteModal.classList.contains('active');
+
+      if (e.key === 'Escape') {
+        if (modalOpen)  closeModal();
+        if (deleteOpen) closeDeleteModal();
+        return;
+      }
+
+      if (modalOpen) {
+        // Ctrl/Cmd + Entrée → enregistrer + nouveau (mode batch)
+        if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+          e.preventDefault();
+          const editing = !!document.getElementById('editId').value;
+          saveClient(!editing);
+          return;
+        }
+        // Entrée simple sur un input (pas textarea) → enregistrer + fermer
+        if (e.key === 'Enter' && e.target.tagName === 'INPUT') {
+          e.preventDefault();
+          saveClient(false);
+        }
+      }
+
+      // Touche "n" hors champ de saisie → nouveau client
+      if (!modalOpen && !deleteOpen && e.key === 'n' &&
+          !['INPUT', 'TEXTAREA'].includes(e.target.tagName)) {
+        e.preventDefault();
+        openModal();
+      }
+    });
 
     // ── Init ─────────────────────────────────────────────────
     filterClients();
