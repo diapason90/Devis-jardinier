@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Connexion – ChrisGarden Pro</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="assets/utils.js"></script>
+  <script src="assets/auth.js"></script>
+  <script>
+    if (isAuthenticated()) window.location.href = 'index.html';
+  </script>
+</head>
+<body class="auth-body">
+
+  <div class="auth-container">
+    <div class="auth-logo">
+      <span class="icon-plant">🌿</span>
+      <h1>ChrisGarden<span class="pro-badge">Pro</span></h1>
+    </div>
+    <p class="auth-subtitle">Connectez-vous pour accéder à votre espace</p>
+
+    <form class="auth-form" onsubmit="handleLogin(event)" autocomplete="on">
+
+      <div class="form-group">
+        <label for="loginInput"><i class="fas fa-user"></i> Identifiant</label>
+        <input
+          type="text"
+          id="loginInput"
+          placeholder="Votre identifiant"
+          autocomplete="username"
+          required
+          autofocus
+        >
+      </div>
+
+      <div class="form-group">
+        <label for="passwordInput"><i class="fas fa-lock"></i> Mot de passe</label>
+        <div class="password-wrapper">
+          <input
+            type="password"
+            id="passwordInput"
+            placeholder="Votre mot de passe"
+            autocomplete="current-password"
+            required
+          >
+          <button type="button" class="btn-eye" onclick="togglePassword()" tabindex="-1" title="Afficher/masquer">
+            <i class="fas fa-eye" id="eyeIcon"></i>
+          </button>
+        </div>
+      </div>
+
+      <div id="loginError" class="auth-error" style="display:none;">
+        <i class="fas fa-exclamation-circle"></i>
+        Identifiant ou mot de passe incorrect.
+      </div>
+
+      <button type="submit" class="btn-primary btn-full">
+        <i class="fas fa-sign-in-alt"></i> Se connecter
+      </button>
+
+    </form>
+
+    <p class="auth-hint">
+      Identifiants par défaut&nbsp;: <strong>admin</strong> / <strong>chrisgarden2026</strong><br>
+      Modifiables dans les Paramètres.
+    </p>
+  </div>
+
+  <script>
+    function handleLogin(e) {
+      e.preventDefault();
+      const login    = document.getElementById('loginInput').value;
+      const password = document.getElementById('passwordInput').value;
+      const errEl    = document.getElementById('loginError');
+
+      if (doLogin(login, password)) {
+        window.location.href = 'index.html';
+      } else {
+        errEl.style.display = 'flex';
+        document.getElementById('passwordInput').value = '';
+        document.getElementById('passwordInput').focus();
+        setTimeout(() => { errEl.style.display = 'none'; }, 4000);
+      }
+    }
+
+    function togglePassword() {
+      const input = document.getElementById('passwordInput');
+      const icon  = document.getElementById('eyeIcon');
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+      } else {
+        input.type = 'password';
+        icon.className = 'fas fa-eye';
+      }
+    }
+  </script>
+</body>
+</html>

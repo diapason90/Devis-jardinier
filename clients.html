@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Clients – ChrisGarden Pro</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="assets/utils.js"></script>
+  <script src="assets/auth.js"></script>
+  <script>checkAuth();</script>
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav class="page-nav">
+    <a href="index.html"      class="page-nav-link"><i class="fas fa-file-invoice"></i> Documents</a>
+    <a href="clients.html"    class="page-nav-link active"><i class="fas fa-users"></i> Clients</a>
+    <a href="parametres.html" class="page-nav-link"><i class="fas fa-cog"></i> Paramètres</a>
+    <button class="page-nav-link page-nav-logout" onclick="logout()">
+      <i class="fas fa-sign-out-alt"></i> Déconnexion
+    </button>
+  </nav>
+
+  <!-- En-tête -->
+  <header class="sub-header">
+    <div class="sub-header-content">
+      <span class="sub-header-icon">👥</span>
+      <div>
+        <h1>Gestion des clients</h1>
+        <p>Carnet d'adresses ChrisGarden</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-container">
+
+    <!-- Barre d'outils -->
+    <div class="toolbar">
+      <div class="search-wrapper">
+        <i class="fas fa-search search-icon"></i>
+        <input
+          type="text"
+          id="searchInput"
+          class="search-input"
+          placeholder="Rechercher par nom, prénom, adresse..."
+          oninput="filterClients()"
+        >
+      </div>
+      <button class="btn-primary" onclick="openModal()">
+        <i class="fas fa-user-plus"></i> Nouveau client
+      </button>
+    </div>
+
+    <!-- Compteur -->
+    <p class="client-count" id="clientCount"></p>
+
+    <!-- Liste des clients -->
+    <div id="clientGrid" class="client-grid"></div>
+
+    <!-- État vide -->
+    <div id="emptyState" class="empty-state" style="display:none;">
+      <div class="empty-icon">👥</div>
+      <h3>Aucun client trouvé</h3>
+      <p>Ajoutez votre premier client ou modifiez la recherche.</p>
+      <button class="btn-primary" onclick="openModal()">
+        <i class="fas fa-user-plus"></i> Ajouter un client
+      </button>
+    </div>
+
+  </main>
+
+  <!-- Modal ajout / édition -->
+  <div id="clientModal" class="modal" onclick="handleModalClick(event)">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h2 id="modalTitle">Nouveau client</h2>
+        <button class="close-btn" onclick="closeModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="editId">
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="fNom">Nom <span class="required">*</span></label>
+            <input type="text" id="fNom" placeholder="Dupont" maxlength="100" required>
+          </div>
+          <div class="form-group">
+            <label for="fPrenom">Prénom <span class="required">*</span></label>
+            <input type="text" id="fPrenom" placeholder="Jean" maxlength="100" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="fAdresse">Adresse <span class="required">*</span></label>
+          <input type="text" id="fAdresse" placeholder="12 rue des Lilas, 1000 Bruxelles" maxlength="200" required>
+        </div>
+
+        <div class="form-group">
+          <label for="fTel">Téléphone</label>
+          <input type="tel" id="fTel" placeholder="0491 23 45 67" maxlength="20">
+        </div>
+
+        <div class="form-group">
+          <label for="fCommentaire">Commentaire</label>
+          <textarea
+            id="fCommentaire"
+            class="textarea"
+            placeholder="Notes, accès, chien, code portail…"
+            maxlength="500"
+            rows="3"
+          ></textarea>
+          <span class="char-count" id="charCount">0 / 500</span>
+        </div>
+
+        <div id="formError" class="auth-error" style="display:none;">
+          <i class="fas fa-exclamation-circle"></i>
+          <span id="formErrorMsg">Veuillez remplir les champs obligatoires.</span>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn-tertiary" onclick="closeModal()">Annuler</button>
+          <button class="btn-primary" onclick="saveClient()">
+            <i class="fas fa-save"></i> Enregistrer
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal confirmation suppression -->
+  <div id="deleteModal" class="modal" onclick="handleDeleteModalClick(event)">
+    <div class="modal-content modal-sm">
+      <div class="modal-header">
+        <h2>Supprimer ce client ?</h2>
+        <button class="close-btn" onclick="closeDeleteModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p id="deleteClientName" class="delete-confirm-name"></p>
+        <p class="delete-confirm-text">Cette action est irréversible.</p>
+        <div class="modal-actions">
+          <button class="btn-tertiary" onclick="closeDeleteModal()">Annuler</button>
+          <button class="btn-danger" onclick="confirmDelete()">
+            <i class="fas fa-trash"></i> Supprimer
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/clients.js"></script>
+  <script>
+    const CLIENTS_KEY = 'chrisgarden_clients_v2';
+    let pendingDeleteId = null;
+
+    // ── Données ──────────────────────────────────────────────
+    function getAllClients() {
+      try {
+        return JSON.parse(localStorage.getItem(CLIENTS_KEY) || '[]');
+      } catch { return []; }
+    }
+
+    function storeClients(list) {
+      localStorage.setItem(CLIENTS_KEY, JSON.stringify(list));
+    }
+
+    // ── Rendu liste ──────────────────────────────────────────
+    function renderClients(list) {
+      const grid   = document.getElementById('clientGrid');
+      const empty  = document.getElementById('emptyState');
+      const count  = document.getElementById('clientCount');
+
+      if (list.length === 0) {
+        grid.innerHTML = '';
+        empty.style.display = 'block';
+        count.textContent = '';
+        return;
+      }
+
+      empty.style.display = 'none';
+      count.textContent = `${list.length} client${list.length > 1 ? 's' : ''}`;
+
+      grid.innerHTML = list.map(c => {
+        const initiales = ((c.prenom?.[0] || '') + (c.nom?.[0] || '')).toUpperCase() || '?';
+        const nomComplet = `${sanitizeInput(c.prenom)} ${sanitizeInput(c.nom)}`.trim();
+        return `
+          <div class="client-card" onclick="openModal('${c.id}')">
+            <div class="client-avatar">${initiales}</div>
+            <div class="client-card-body">
+              <div class="client-card-name">${nomComplet}</div>
+              ${c.adresse  ? `<div class="client-card-detail"><i class="fas fa-map-marker-alt"></i> ${sanitizeInput(c.adresse)}</div>` : ''}
+              ${c.tel      ? `<div class="client-card-detail"><i class="fas fa-phone"></i> ${sanitizeInput(c.tel)}</div>` : ''}
+              ${c.commentaire ? `<div class="client-card-detail client-card-comment"><i class="fas fa-comment"></i> ${sanitizeInput(c.commentaire)}</div>` : ''}
+            </div>
+            <div class="client-card-actions" onclick="event.stopPropagation()">
+              <button class="btn-icon" title="Modifier" onclick="openModal('${c.id}')">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button class="btn-icon btn-icon-danger" title="Supprimer" onclick="askDelete('${c.id}', '${nomComplet}')">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function filterClients() {
+      const q = document.getElementById('searchInput').value.toLowerCase();
+      const all = getAllClients();
+      const filtered = q
+        ? all.filter(c =>
+            `${c.nom} ${c.prenom} ${c.adresse} ${c.tel} ${c.commentaire}`.toLowerCase().includes(q)
+          )
+        : all;
+      renderClients(filtered);
+    }
+
+    // ── Modal ajout / édition ────────────────────────────────
+    function openModal(id = null) {
+      document.getElementById('formError').style.display = 'none';
+      document.getElementById('editId').value = id || '';
+      document.getElementById('modalTitle').textContent = id ? 'Modifier le client' : 'Nouveau client';
+
+      if (id) {
+        const client = getAllClients().find(c => c.id === id);
+        if (!client) return;
+        document.getElementById('fNom').value         = client.nom         || '';
+        document.getElementById('fPrenom').value      = client.prenom      || '';
+        document.getElementById('fAdresse').value     = client.adresse     || '';
+        document.getElementById('fTel').value         = client.tel         || '';
+        document.getElementById('fCommentaire').value = client.commentaire || '';
+      } else {
+        document.getElementById('fNom').value         = '';
+        document.getElementById('fPrenom').value      = '';
+        document.getElementById('fAdresse').value     = '';
+        document.getElementById('fTel').value         = '';
+        document.getElementById('fCommentaire').value = '';
+      }
+      updateCharCount();
+      document.getElementById('clientModal').classList.add('active');
+      document.getElementById('fNom').focus();
+    }
+
+    function closeModal() {
+      document.getElementById('clientModal').classList.remove('active');
+    }
+
+    function handleModalClick(e) {
+      if (e.target === document.getElementById('clientModal')) closeModal();
+    }
+
+    function updateCharCount() {
+      const len = document.getElementById('fCommentaire').value.length;
+      document.getElementById('charCount').textContent = `${len} / 500`;
+    }
+
+    document.getElementById('fCommentaire').addEventListener('input', updateCharCount);
+
+    function showFormError(msg) {
+      document.getElementById('formErrorMsg').textContent = msg;
+      document.getElementById('formError').style.display = 'flex';
+    }
+
+    function saveClient() {
+      const nom         = validateText(document.getElementById('fNom').value);
+      const prenom      = validateText(document.getElementById('fPrenom').value);
+      const adresse     = validateText(document.getElementById('fAdresse').value);
+      const tel         = validateText(document.getElementById('fTel').value, 20);
+      const commentaire = validateText(document.getElementById('fCommentaire').value, 500);
+      const editId      = document.getElementById('editId').value;
+
+      if (!nom || !prenom) {
+        showFormError('Le nom et le prénom sont obligatoires.');
+        return;
+      }
+      if (!adresse) {
+        showFormError("L'adresse est obligatoire.");
+        return;
+      }
+
+      const clients = getAllClients();
+
+      if (editId) {
+        const idx = clients.findIndex(c => c.id === editId);
+        if (idx !== -1) {
+          clients[idx] = { ...clients[idx], nom, prenom, adresse, tel, commentaire, updated: new Date().toISOString() };
+        }
+      } else {
+        clients.push({
+          id: Date.now().toString(),
+          nom, prenom, adresse, tel, commentaire,
+          created: new Date().toISOString()
+        });
+      }
+
+      storeClients(clients);
+      closeModal();
+      filterClients();
+    }
+
+    // ── Suppression ──────────────────────────────────────────
+    function askDelete(id, nomComplet) {
+      pendingDeleteId = id;
+      document.getElementById('deleteClientName').textContent = nomComplet;
+      document.getElementById('deleteModal').classList.add('active');
+    }
+
+    function closeDeleteModal() {
+      pendingDeleteId = null;
+      document.getElementById('deleteModal').classList.remove('active');
+    }
+
+    function handleDeleteModalClick(e) {
+      if (e.target === document.getElementById('deleteModal')) closeDeleteModal();
+    }
+
+    function confirmDelete() {
+      if (!pendingDeleteId) return;
+      storeClients(getAllClients().filter(c => c.id !== pendingDeleteId));
+      closeDeleteModal();
+      filterClients();
+    }
+
+    // ── Init ─────────────────────────────────────────────────
+    filterClients();
+  </script>
+</body>
+</html>

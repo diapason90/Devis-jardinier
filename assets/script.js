@@ -9,20 +9,51 @@ const fmt = new Intl.NumberFormat('fr-FR', {
   maximumFractionDigits: 2
 });
 
+const PRICES_KEY   = 'chrisgarden_prices';
+const TVA_KEY      = 'chrisgarden_default_tva';
+
+// Prix de référence (surchargés par les paramètres)
 const PRESTATIONS = [
-  { name: 'Tonte', price: 20, unit: 'h' },
-  { name: 'Débroussaillage', price: 20, unit: 'h' },
-  { name: 'Taille de haies', price: 24, unit: 'h' },
-  { name: 'Élagage', price: 30, unit: 'h' },
-  { name: 'Entretien parterres', price: 22, unit: 'h' },
-  { name: 'Nettoyage gouttière', price: 26, unit: 'h' },
-  { name: 'Karcher / Haute pression', price: 24, unit: 'h' },
-  { name: 'Ramassage / évacuation déchets', price: 20, unit: 'remorque' },
-  { name: 'Plantation arbustes / arbres', price: 25, unit: 'h' },
-  { name: 'Scarification pelouse', price: 24, unit: 'h' },
-  { name: 'Forfait journalier', price: 160, unit: 'jour' },
-  { name: 'Location machine unitaire', price: 50, unit: 'unité' }
+  { name: 'Tonte',                          price: 20,  unit: 'h'        },
+  { name: 'Débroussaillage',                price: 20,  unit: 'h'        },
+  { name: 'Taille de haies',               price: 24,  unit: 'h'        },
+  { name: 'Élagage',                        price: 30,  unit: 'h'        },
+  { name: 'Entretien parterres',            price: 22,  unit: 'h'        },
+  { name: 'Nettoyage gouttière',            price: 26,  unit: 'h'        },
+  { name: 'Karcher / Haute pression',       price: 24,  unit: 'h'        },
+  { name: 'Ramassage / évacuation déchets', price: 20,  unit: 'remorque' },
+  { name: 'Plantation arbustes / arbres',   price: 25,  unit: 'h'        },
+  { name: 'Scarification pelouse',          price: 24,  unit: 'h'        },
+  { name: 'Forfait journalier',             price: 160, unit: 'jour'     },
+  { name: 'Location machine unitaire',      price: 50,  unit: 'unité'    },
 ];
+
+// Applique les prix personnalisés depuis localStorage
+function loadCustomPrices() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(PRICES_KEY) || '{}');
+    PRESTATIONS.forEach((p, i) => {
+      if (stored[i] !== undefined) p.price = stored[i];
+    });
+    // Taux km stocké séparément, lu dans updateTotal()
+  } catch { /* garde les prix par défaut */ }
+}
+
+function getKmRate() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(PRICES_KEY) || '{}');
+    return stored['km'] !== undefined ? stored['km'] : 0.25;
+  } catch { return 0.25; }
+}
+
+// Charge la TVA par défaut définie dans les paramètres
+function loadDefaultTva() {
+  const tva = localStorage.getItem(TVA_KEY);
+  if (tva !== null) {
+    const radio = document.querySelector(`input[name="tvaRate"][value="${tva}"]`);
+    if (radio) radio.checked = true;
+  }
+}
 
 const TEMPLATES = [
   {
@@ -54,6 +85,8 @@ const TEMPLATES = [
 // ============================================
 
 document.addEventListener('DOMContentLoaded', () => {
+  loadCustomPrices();
+  loadDefaultTva();
   loadDraft();
   setupEventListeners();
   updateTotal();
@@ -119,7 +152,7 @@ function updateTotal() {
   });
 
   const km = validateQuantity(document.getElementById('km').value);
-  subtotal += km * 0.25;
+  subtotal += km * getKmRate();
 
   const tvaRate = parseFloat(document.querySelector('input[name="tvaRate"]:checked').value);
   const tvaAmount = subtotal * (tvaRate / 100);
@@ -350,10 +383,11 @@ function generatePDF() {
     });
 
     if (data.km > 0) {
-      const totalKm = data.km * 0.25;
+      const kmRate  = getKmRate();
+      const totalKm = data.km * kmRate;
       doc.text('Frais kilométriques', 10, y);
       doc.text(data.km.toString(), 100, y);
-      doc.text(fmt.format(0.25), 130, y);
+      doc.text(fmt.format(kmRate), 130, y);
       doc.text(fmt.format(totalKm), 160, y);
       subtotal += totalKm;
       y += 5;

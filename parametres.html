@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Paramètres – ChrisGarden Pro</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="assets/utils.js"></script>
+  <script src="assets/auth.js"></script>
+  <script>checkAuth();</script>
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav class="page-nav">
+    <a href="index.html"      class="page-nav-link"><i class="fas fa-file-invoice"></i> Documents</a>
+    <a href="clients.html"    class="page-nav-link"><i class="fas fa-users"></i> Clients</a>
+    <a href="parametres.html" class="page-nav-link active"><i class="fas fa-cog"></i> Paramètres</a>
+    <button class="page-nav-link page-nav-logout" onclick="logout()">
+      <i class="fas fa-sign-out-alt"></i> Déconnexion
+    </button>
+  </nav>
+
+  <!-- En-tête -->
+  <header class="sub-header">
+    <div class="sub-header-content">
+      <span class="sub-header-icon">⚙️</span>
+      <div>
+        <h1>Paramètres</h1>
+        <p>Tarifs, TVA par défaut et accès</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-container">
+
+    <!-- ── Section 1 : Tarifs ── -->
+    <section class="card">
+      <div class="card-header">
+        <h2>Tarifs des prestations</h2>
+        <button class="btn-tertiary btn-sm" onclick="resetPrices()">
+          <i class="fas fa-undo"></i> Réinitialiser
+        </button>
+      </div>
+
+      <table class="params-table">
+        <thead>
+          <tr>
+            <th>Prestation</th>
+            <th>Unité</th>
+            <th class="th-price">Prix (€)</th>
+          </tr>
+        </thead>
+        <tbody id="prestationsBody"></tbody>
+      </table>
+
+      <!-- Frais km -->
+      <div class="km-row">
+        <div class="km-label">
+          <i class="fas fa-car"></i>
+          <span>Frais kilométriques</span>
+        </div>
+        <div class="km-inputs">
+          <span class="unit-label">€ / km</span>
+          <input
+            type="number"
+            id="kmRate"
+            class="price-input"
+            min="0"
+            step="0.01"
+            max="9.99"
+            value="0.25"
+          >
+        </div>
+      </div>
+
+      <div class="section-actions">
+        <button class="btn-primary" onclick="savePrices()">
+          <i class="fas fa-save"></i> Enregistrer les tarifs
+        </button>
+      </div>
+      <div id="pricesSaved" class="save-feedback" style="display:none;">
+        <i class="fas fa-check-circle"></i> Tarifs enregistrés !
+      </div>
+    </section>
+
+    <!-- ── Section 2 : TVA par défaut ── -->
+    <section class="card">
+      <div class="card-header">
+        <h2>TVA par défaut</h2>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="radio-label">
+            <input type="radio" name="defaultTva" value="0">
+            <span class="radio-custom"></span>
+            0 % (Petit commerce)
+          </label>
+        </div>
+        <div class="form-group">
+          <label class="radio-label">
+            <input type="radio" name="defaultTva" value="6">
+            <span class="radio-custom"></span>
+            6 % (Réduit)
+          </label>
+        </div>
+        <div class="form-group">
+          <label class="radio-label">
+            <input type="radio" name="defaultTva" value="21">
+            <span class="radio-custom"></span>
+            21 % (Normal)
+          </label>
+        </div>
+      </div>
+      <div class="section-actions">
+        <button class="btn-primary" onclick="saveTva()">
+          <i class="fas fa-save"></i> Enregistrer la TVA
+        </button>
+      </div>
+      <div id="tvaSaved" class="save-feedback" style="display:none;">
+        <i class="fas fa-check-circle"></i> TVA enregistrée !
+      </div>
+    </section>
+
+    <!-- ── Section 3 : Accès ── -->
+    <section class="card">
+      <div class="card-header">
+        <h2>Accès &amp; Sécurité</h2>
+      </div>
+
+      <div class="form-group">
+        <label for="newLogin">Identifiant</label>
+        <input type="text" id="newLogin" placeholder="Nouvel identifiant" maxlength="50" autocomplete="username">
+      </div>
+
+      <div class="form-group">
+        <label for="newPassword">Nouveau mot de passe</label>
+        <div class="password-wrapper">
+          <input type="password" id="newPassword" placeholder="Laisser vide pour ne pas changer" maxlength="100" autocomplete="new-password">
+          <button type="button" class="btn-eye" onclick="togglePwd('newPassword', 'eye1')" tabindex="-1">
+            <i class="fas fa-eye" id="eye1"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="confirmPassword">Confirmer le mot de passe</label>
+        <div class="password-wrapper">
+          <input type="password" id="confirmPassword" placeholder="Répétez le mot de passe" maxlength="100" autocomplete="new-password">
+          <button type="button" class="btn-eye" onclick="togglePwd('confirmPassword', 'eye2')" tabindex="-1">
+            <i class="fas fa-eye" id="eye2"></i>
+          </button>
+        </div>
+      </div>
+
+      <div id="authError" class="auth-error" style="display:none;">
+        <i class="fas fa-exclamation-circle"></i>
+        <span id="authErrorMsg"></span>
+      </div>
+
+      <div class="section-actions">
+        <button class="btn-primary" onclick="saveAuth()">
+          <i class="fas fa-key"></i> Mettre à jour l'accès
+        </button>
+      </div>
+      <div id="authSaved" class="save-feedback" style="display:none;">
+        <i class="fas fa-check-circle"></i> Accès mis à jour !
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    const PRICES_KEY   = 'chrisgarden_prices';
+    const TVA_KEY      = 'chrisgarden_default_tva';
+
+    const PRESTATIONS_DEF = [
+      { name: 'Tonte',                          unit: 'h',        defaultPrice: 20  },
+      { name: 'Débroussaillage',                unit: 'h',        defaultPrice: 20  },
+      { name: 'Taille de haies',                unit: 'h',        defaultPrice: 24  },
+      { name: 'Élagage',                        unit: 'h',        defaultPrice: 30  },
+      { name: 'Entretien parterres',            unit: 'h',        defaultPrice: 22  },
+      { name: 'Nettoyage gouttière',            unit: 'h',        defaultPrice: 26  },
+      { name: 'Karcher / Haute pression',       unit: 'h',        defaultPrice: 24  },
+      { name: 'Ramassage / évacuation déchets', unit: 'remorque', defaultPrice: 20  },
+      { name: 'Plantation arbustes / arbres',   unit: 'h',        defaultPrice: 25  },
+      { name: 'Scarification pelouse',          unit: 'h',        defaultPrice: 24  },
+      { name: 'Forfait journalier',             unit: 'jour',     defaultPrice: 160 },
+      { name: 'Location machine unitaire',      unit: 'unité',    defaultPrice: 50  },
+    ];
+
+    const GROUP_LABELS = {
+      0: '🌱 Travaux au sol',
+      2: '✂️ Taille & Élagage',
+      5: '🔧 Services spécialisés',
+      10: '📦 Forfaits',
+    };
+
+    // ── Chargement ────────────────────────────────────────────
+    function getStoredPrices() {
+      try { return JSON.parse(localStorage.getItem(PRICES_KEY) || '{}'); }
+      catch { return {}; }
+    }
+
+    function buildTable() {
+      const stored = getStoredPrices();
+      const tbody  = document.getElementById('prestationsBody');
+      tbody.innerHTML = PRESTATIONS_DEF.map((p, i) => {
+        const price = stored[i] !== undefined ? stored[i] : p.defaultPrice;
+        const groupLabel = GROUP_LABELS[i]
+          ? `<tr><td colspan="3" class="group-separator">${GROUP_LABELS[i]}</td></tr>` : '';
+        return `${groupLabel}
+          <tr>
+            <td>${p.name}</td>
+            <td><span class="unit-badge">${p.unit}</span></td>
+            <td class="td-price">
+              <input
+                type="number"
+                class="price-input"
+                id="price-${i}"
+                value="${price}"
+                min="0"
+                step="0.5"
+                max="9999"
+              >
+            </td>
+          </tr>`;
+      }).join('');
+    }
+
+    function loadKmRate() {
+      const stored = getStoredPrices();
+      document.getElementById('kmRate').value = stored['km'] !== undefined ? stored['km'] : 0.25;
+    }
+
+    function loadTva() {
+      const stored = localStorage.getItem(TVA_KEY) || '0';
+      const radio  = document.querySelector(`input[name="defaultTva"][value="${stored}"]`);
+      if (radio) radio.checked = true;
+      else document.querySelector('input[name="defaultTva"][value="0"]').checked = true;
+    }
+
+    function loadAuth() {
+      const creds = getCredentials();
+      document.getElementById('newLogin').value = creds.login;
+    }
+
+    // ── Sauvegarde prix ───────────────────────────────────────
+    function savePrices() {
+      const prices = getStoredPrices();
+      PRESTATIONS_DEF.forEach((_, i) => {
+        const val = parseFloat(document.getElementById(`price-${i}`).value);
+        prices[i] = isNaN(val) || val < 0 ? 0 : val;
+      });
+      const km = parseFloat(document.getElementById('kmRate').value);
+      prices['km'] = isNaN(km) || km < 0 ? 0.25 : km;
+      localStorage.setItem(PRICES_KEY, JSON.stringify(prices));
+      flashFeedback('pricesSaved');
+    }
+
+    function resetPrices() {
+      if (!confirm('Réinitialiser tous les tarifs aux valeurs par défaut ?')) return;
+      localStorage.removeItem(PRICES_KEY);
+      buildTable();
+      loadKmRate();
+      flashFeedback('pricesSaved');
+    }
+
+    // ── Sauvegarde TVA ────────────────────────────────────────
+    function saveTva() {
+      const val = document.querySelector('input[name="defaultTva"]:checked')?.value || '0';
+      localStorage.setItem(TVA_KEY, val);
+      flashFeedback('tvaSaved');
+    }
+
+    // ── Sauvegarde accès ──────────────────────────────────────
+    function saveAuth() {
+      const errEl    = document.getElementById('authError');
+      const errMsg   = document.getElementById('authErrorMsg');
+      errEl.style.display = 'none';
+
+      const login    = document.getElementById('newLogin').value.trim();
+      const password = document.getElementById('newPassword').value;
+      const confirm  = document.getElementById('confirmPassword').value;
+
+      if (!login) {
+        errMsg.textContent = "L'identifiant ne peut pas être vide.";
+        errEl.style.display = 'flex'; return;
+      }
+      if (password && password !== confirm) {
+        errMsg.textContent = 'Les mots de passe ne correspondent pas.';
+        errEl.style.display = 'flex'; return;
+      }
+      if (password && password.length < 6) {
+        errMsg.textContent = 'Le mot de passe doit contenir au moins 6 caractères.';
+        errEl.style.display = 'flex'; return;
+      }
+
+      const currentCreds = getCredentials();
+      const newPassword  = password || currentCreds.password;
+      setCredentials(login, newPassword);
+
+      document.getElementById('newPassword').value  = '';
+      document.getElementById('confirmPassword').value = '';
+      flashFeedback('authSaved');
+    }
+
+    // ── Utilitaires ───────────────────────────────────────────
+    function flashFeedback(id) {
+      const el = document.getElementById(id);
+      el.style.display = 'flex';
+      setTimeout(() => { el.style.display = 'none'; }, 3000);
+    }
+
+    function togglePwd(inputId, iconId) {
+      const input = document.getElementById(inputId);
+      const icon  = document.getElementById(iconId);
+      if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'fas fa-eye-slash';
+      } else {
+        input.type = 'password';
+        icon.className = 'fas fa-eye';
+      }
+    }
+
+    // ── Init ──────────────────────────────────────────────────
+    buildTable();
+    loadKmRate();
+    loadTva();
+    loadAuth();
+  </script>
+</body>
+</html>
