@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ChrisGarden Pro - Devis et Factures</title>
+  
+  <!-- Google Fonts: Poppins (display) + Inter (body) -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <!-- En-tête premium -->
+  <header class="header">
+    <div class="header-content">
+      <div class="header-logo">
+        <span class="icon-plant">🌿</span>
+        <h1>ChrisGarden<span class="pro-badge">Pro</span></h1>
+      </div>
+      <p class="header-subtitle">Devis et factures professionnels pour services de jardin</p>
+    </div>
+    <div class="header-accent"></div>
+  </header>
+
+  <main class="main-container">
+    <!-- Navbar rapide -->
+    <nav class="quick-nav">
+      <button class="nav-btn active" data-section="form">📋 Nouveau document</button>
+      <button class="nav-btn" data-section="clients">👥 Clients</button>
+      <button class="nav-btn" data-section="templates">⭐ Templates</button>
+      <button class="nav-btn" data-section="export">📊 Export</button>
+    </nav>
+
+    <!-- SECTION 1 : Type de document + TVA -->
+    <section class="card">
+      <div class="card-header">
+        <h2>Type de document</h2>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="radio-label">
+            <input type="radio" name="docType" value="devis" checked>
+            <span class="radio-custom"></span>
+            Devis
+          </label>
+        </div>
+        <div class="form-group">
+          <label class="radio-label">
+            <input type="radio" name="docType" value="facture">
+            <span class="radio-custom"></span>
+            Facture
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- TVA -->
+    <section class="card">
+      <div class="card-header">
+        <h2>Taux de TVA</h2>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="radio-label">
+            <input type="radio" name="tvaRate" value="0" checked>
+            <span class="radio-custom"></span>
+            0 % (Petit commerce)
+          </label>
+        </div>
+        <div class="form-group">
+          <label class="radio-label">
+            <input type="radio" name="tvaRate" value="6">
+            <span class="radio-custom"></span>
+            6 % (Réduit)
+          </label>
+        </div>
+        <div class="form-group">
+          <label class="radio-label">
+            <input type="radio" name="tvaRate" value="21">
+            <span class="radio-custom"></span>
+            21 % (Normal)
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- Informations client avec autocomplete -->
+    <section class="card">
+      <div class="card-header">
+        <h2>Informations client</h2>
+        <button class="btn-icon" title="Ajouter aux favoris" onclick="openClientModal()">
+          <i class="fas fa-plus"></i>
+        </button>
+      </div>
+      
+      <div class="form-group">
+        <label for="nomClient">Nom du client *</label>
+        <div class="input-wrapper">
+          <input 
+            type="text" 
+            id="nomClient" 
+            placeholder="Commencez à taper..." 
+            autocomplete="off"
+            required
+          >
+          <div id="clientSuggestions" class="suggestions-dropdown"></div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="adresseClient">Adresse *</label>
+        <input type="text" id="adresseClient" placeholder="Rue, numéro, code postal, ville" required>
+      </div>
+
+      <div class="form-group">
+        <label for="telClient">Téléphone</label>
+        <input type="tel" id="telClient" placeholder="06 12 34 56 78">
+      </div>
+    </section>
+
+    <!-- Prestations groupées par catégorie -->
+    <section class="card">
+      <div class="card-header">
+        <h2>Prestations</h2>
+        <span class="card-info">Cliquez sur une prestation pour l'ajouter</span>
+      </div>
+
+      <!-- Groupe 1 : Travaux au sol -->
+      <div class="prestation-group">
+        <div class="group-header">
+          <span class="group-icon">🌱</span>
+          <h3>Travaux au sol</h3>
+          <span class="group-count" id="count-sol">0</span>
+        </div>
+        <div class="prestations-grid">
+          <div class="prestation-item">
+            <div class="prestation-content">
+              <span class="prestation-name">Tonte</span>
+              <span class="prestation-price">20 €/h</span>
+            </div>
+            <input type="number" class="prestation-qty" id="qty-0" min="0" step="0.5" value="0" onchange="updateTotal()">
+          </div>
+          <div class="prestation-item">
+            <div class="prestation-content">
+              <span class="prestation-name">Débroussaillage</span>
+              <span class="prestation-price">20 €/h</span>
+            </div>
+            <input type="number" class="prestation-qty" id="qty-1" min="0" step="0.5" value="0" onchange="updateTotal()">
+          </div>
+          <div class="prestation-item">
+            <div class="prestation-content">
+              <span class="prestation-name">Scarification pelouse</span>
+              <span class="prestation-price">24 €/h</span>
+            </div>
+            <input type="number" class="prestation-qty" id="qty-9" min="0" step="0.5" value="0" onchange="updateTotal()">
+          </div>
+        </div>
+      </div>
+
+      <!-- Groupe 2 : Taille & Élagage -->
+      <div class="prestation-group">
+        <div class="group-header">
+          <span class="group-icon">✂️</span>
+          <h3>Taille & Élagage</h3>
+          <span class="group-count" id="count-taille">0</span>
+        </div>
+        <div class="prestations-grid">
+          <div class="prestation-item">
+            <div class="prestation-content">
+              <span class="prestation-name">Taille de haies</span>
+              <span class="prestation-price">24 €/h</span>
+            </div>
+            <input type="number" class="prestation-qty" id="qty-2" min="0" step="0.5" value="0" onchange="updateTotal()">
+          </div>
+          <div class="prestation-item">
+            <div class="prestation-content">
+              <span class="prestation-name">Élagage</span>
+              <span class="prestation-price">30 €/h</span>
+            </div>
+            <input type="number" class="prestation-qty" id="qty-3" min="0" step="0.5" value="0" onchange="updateTotal()">
+          </div>
+          <div class="prestation-item">
+            <div class="prestation-content">
+              <span class="prestation-name">Entretien parterres</span>
+              <span class="prestation-price">22 €/h</span>
+            </div>
+            <input type="number" class="prestation-qty" id="qty-4" min="0" step="0.5" value="0" onchange="updateTotal()">
+          </div>
+        </div>
+      </div>
+
+      <!-- Groupe 3 : Services spécialisés -->
+      <div class="prestation-group">
+        <div class="group-header">
+          <span class="group-icon">🔧</span>
+          <h3>Services spécialisés</h3>
+          <span class="group-count" id="count-special">0</span>
+        </div>
+        <div class="prestations-grid">
+          <div class="prestation-item">
+            <div class="prestation-content">
+              <span class="prestation-name">Nettoyage gouttière</span>
+              <span class="prestation-price">26 €/h</span>
+            </div>
+            <input type="number" class="prestation-qty" id="qty-5" min="0" step="0.5" value="0" onchange="updateTotal()">
+          </div>
+          <div class="prestation-item">
+            <div class="prestation-content">
+              <span class="prestation-name">Kärcher / Haute pression</span>
+              <span class="prestation-price">24 €/h</span>
+            </div>
+            <input type="number" class="prestation-qty" id="qty-6" min="0" step="0.5" value="0" onchange="updateTotal()">
+          </div>
+          <div class="prestation-item">
+            <div class="prestation-content">
+              <span class="prestation-name">Plantation arbustes/arbres</span>
+              <span class="prestation-price">25 €/h</span>
+            </div>
+            <input type="number" class="prestation-qty" id="qty-8" min="0" step="0.5" value="0" onchange="updateTotal()">
+          </div>
+          <div class="prestation-item">
+            <div class="prestation-content">
+              <span class="prestation-name">Ramassage / évacuation déchets</span>
+              <span class="prestation-price">20 €/remorque</span>
+            </div>
+            <input type="number" class="prestation-qty" id="qty-7" min="0" step="0.5" value="0" onchange="updateTotal()">
+          </div>
+        </div>
+      </div>
+
+      <!-- Groupe 4 : Forfaits -->
+      <div class="prestation-group">
+        <div class="group-header">
+          <span class="group-icon">📦</span>
+          <h3>Forfaits</h3>
+          <span class="group-count" id="count-forfait">0</span>
+        </div>
+        <div class="prestations-grid">
+          <div class="prestation-item">
+            <div class="prestation-content">
+              <span class="prestation-name">Forfait journalier</span>
+              <span class="prestation-price">160 €/jour</span>
+            </div>
+            <input type="number" class="prestation-qty" id="qty-10" min="0" step="0.5" value="0" onchange="updateTotal()">
+          </div>
+          <div class="prestation-item">
+            <div class="prestation-content">
+              <span class="prestation-name">Location machine unitaire</span>
+              <span class="prestation-price">50 €/unité</span>
+            </div>
+            <input type="number" class="prestation-qty" id="qty-11" min="0" step="0.5" value="0" onchange="updateTotal()">
+          </div>
+        </div>
+      </div>
+
+      <!-- Templates rapides -->
+      <div class="templates-bar">
+        <label>Templates rapides :</label>
+        <button class="btn-template" onclick="applyTemplate(0)">⭐ Entretien complet</button>
+        <button class="btn-template" onclick="applyTemplate(1)">⭐ Soin arbres</button>
+        <button class="btn-template" onclick="applyTemplate(2)">⭐ Nettoyage complet</button>
+      </div>
+
+      <!-- Prestations personnalisées -->
+      <div class="custom-section">
+        <h4>Prestations personnalisées</h4>
+        <div id="customList"></div>
+        <button class="btn-add" onclick="addCustom()">
+          <i class="fas fa-plus"></i> Ajouter une prestation personnalisée
+        </button>
+      </div>
+    </section>
+
+    <!-- Déplacement -->
+    <section class="card">
+      <div class="card-header">
+        <h2>Frais de déplacement</h2>
+      </div>
+      <div class="form-group">
+        <label for="km">Kilomètres (0,25 €/km)</label>
+        <div class="input-with-unit">
+          <input type="number" id="km" min="0" step="1" value="0" onchange="updateTotal()" placeholder="0">
+          <span class="unit">km</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Récapitulatif détaillé -->
+    <section class="card summary-card">
+      <div class="card-header">
+        <h2>Récapitulatif</h2>
+      </div>
+      <div class="summary-table">
+        <div class="summary-row">
+          <span>Sous-total HTVA</span>
+          <span id="sousTotal" class="amount">0,00 €</span>
+        </div>
+        <div class="summary-row">
+          <span id="tvaLabel">TVA (0 %)</span>
+          <span id="tva" class="amount">0,00 €</span>
+        </div>
+        <div class="summary-row total">
+          <span>Total TTC</span>
+          <span id="total" class="amount">0,00 €</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Actions -->
+    <section class="actions">
+      <button class="btn-primary" onclick="generatePDF()">
+        <i class="fas fa-download"></i> Générer PDF
+      </button>
+      <button class="btn-secondary" onclick="exportCSV()">
+        <i class="fas fa-table"></i> Export CSV
+      </button>
+      <button class="btn-tertiary" onclick="saveDraft()">
+        <i class="fas fa-save"></i> Sauvegarder
+      </button>
+    </section>
+  </main>
+
+  <!-- Modal clients -->
+  <div id="clientModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Gérer les clients</h2>
+        <button class="close-btn" onclick="closeClientModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="clientsList" class="clients-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/papaparse/5.4.1/papaparse.min.js"></script>
+  <script src="assets/utils.js"></script>
+  <script src="assets/clients.js"></script>
+  <script src="assets/script.js"></script>
+</body>
+</html>
