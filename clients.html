@@ -10,6 +10,9 @@
   <script src="assets/utils.js"></script>
   <script src="assets/auth.js"></script>
   <script>checkAuth();</script>
+  <!-- Supabase JS client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/supabase.js"></script>
 </head>
 <body>
 
@@ -165,10 +168,10 @@
     let sessionAdded = 0;
 
     // ── Toast ────────────────────────────────────────────────
-    function showToast(msg, icon = 'check-circle') {
+    function showToast(msg, icon = 'check-circle', isError = false) {
       const container = document.getElementById('toastContainer');
       const toast = document.createElement('div');
-      toast.className = 'toast';
+      toast.className = 'toast' + (isError ? ' toast-error' : '');
       toast.innerHTML = `<i class="fas fa-${icon}"></i> <span>${msg}</span>`;
       container.appendChild(toast);
       setTimeout(() => {
@@ -177,15 +180,17 @@
       }, 2500);
     }
 
-    // ── Données ──────────────────────────────────────────────
-    function getAllClients() {
-      try {
-        return JSON.parse(localStorage.getItem(CLIENTS_KEY) || '[]');
-      } catch { return []; }
-    }
+    // ── Données (Supabase) ───────────────────────────────────
+    let allClientsCache = [];
 
-    function storeClients(list) {
-      localStorage.setItem(CLIENTS_KEY, JSON.stringify(list));
+    async function loadAllClients() {
+      try {
+        allClientsCache = await dbGetClients();
+      } catch (err) {
+        showToast('Erreur de chargement: ' + (err.message || ''), 'exclamation-circle', true);
+        allClientsCache = [];
+      }
+      return allClientsCache;
     }
 
     // ── Rendu liste ──────────────────────────────────────────
@@ -228,9 +233,14 @@
       }).join('');
     }
 
+    async function refreshAndRender() {
+      await loadAllClients();
+      filterClients();
+    }
+
     function filterClients() {
       const q = document.getElementById('searchInput').value.toLowerCase();
-      const all = getAllClients().sort((a, b) => {
+      const all = [...allClientsCache].sort((a, b) => {
         const an = `${a.nom} ${a.prenom}`.toLowerCase();
         const bn = `${b.nom} ${b.prenom}`.toLowerCase();
         return an.localeCompare(bn, 'fr');
@@ -252,7 +262,7 @@
       document.getElementById('btnSaveContinue').style.display = id ? 'none' : '';
 
       if (id) {
-        const client = getAllClients().find(c => c.id === id);
+        const client = allClientsCache.find(c => c.id === id);
         if (!client) return;
         document.getElementById('fNom').value         = client.nom         || '';
         document.getElementById('fPrenom').value      = client.prenom      || '';
@@ -291,7 +301,7 @@
       document.getElementById('formError').style.display = 'flex';
     }
 
-    function saveClient(continueAdding = false) {
+    async function saveClient(continueAdding = false) {
       const nom         = validateText(document.getElementById('fNom').value);
       const prenom      = validateText(document.getElementById('fPrenom').value);
       const adresse     = validateText(document.getElementById('fAdresse').value);
@@ -309,24 +319,19 @@
         return;
       }
 
-      const clients = getAllClients();
-
-      if (editId) {
-        const idx = clients.findIndex(c => c.id === editId);
-        if (idx !== -1) {
-          clients[idx] = { ...clients[idx], nom, prenom, adresse, tel, commentaire, updated: new Date().toISOString() };
+      try {
+        if (editId) {
+          await dbUpdateClient(editId, { nom, prenom, adresse, tel, commentaire });
+        } else {
+          await dbAddClient({ nom, prenom, adresse, tel, commentaire });
+          sessionAdded++;
         }
-      } else {
-        clients.push({
-          id: Date.now().toString(),
-          nom, prenom, adresse, tel, commentaire,
-          created: new Date().toISOString()
-        });
-        sessionAdded++;
+      } catch (err) {
+        showFormError('Erreur Supabase : ' + (err.message || 'inconnue'));
+        return;
       }
 
-      storeClients(clients);
-      filterClients();
+      await refreshAndRender();
 
       if (continueAdding && !wasEdit) {
         // Vide les champs et reste dans la modal pour encoder le suivant
@@ -362,11 +367,16 @@
       if (e.target === document.getElementById('deleteModal')) closeDeleteModal();
     }
 
-    function confirmDelete() {
+    async function confirmDelete() {
       if (!pendingDeleteId) return;
-      storeClients(getAllClients().filter(c => c.id !== pendingDeleteId));
+      try {
+        await dbDeleteClient(pendingDeleteId);
+        showToast('Client supprimé', 'trash');
+      } catch (err) {
+        showToast('Erreur suppression : ' + (err.message || ''), 'exclamation-circle', true);
+      }
       closeDeleteModal();
-      filterClients();
+      await refreshAndRender();
     }
 
     // ── Raccourcis clavier ───────────────────────────────────
@@ -406,7 +416,7 @@
     });
 
     // ── Init ─────────────────────────────────────────────────
-    filterClients();
+    refreshAndRender();
   </script>
 </body>
 </html>

@@ -1,148 +1,150 @@
-// Gestion des clients – format v2 (array, nom + prénom + commentaire)
+// Cache + autocomplete clients pour la page principale (index.html)
+// Source de vérité : Supabase (assets/supabase.js)
 
-const CLIENTS_KEY = 'chrisgarden_clients_v2';
+let clientsCache = [];
+
+async function refreshClientsCache() {
+  if (typeof dbGetClients !== 'function') return;
+  try {
+    clientsCache = await dbGetClients();
+  } catch (err) {
+    console.error('refreshClientsCache:', err);
+    clientsCache = [];
+  }
+}
+
+// Charge le cache au démarrage
+document.addEventListener('DOMContentLoaded', refreshClientsCache);
 
 function getStoredClients() {
-  try {
-    return JSON.parse(localStorage.getItem(CLIENTS_KEY) || '[]');
-  } catch {
-    return [];
-  }
+  return clientsCache;
 }
 
-function _saveClients(list) {
-  localStorage.setItem(CLIENTS_KEY, JSON.stringify(list));
-}
-
-// Ajoute ou met à jour un client depuis le formulaire principal (nom complet)
-function saveClient(nomComplet, adresse, tel) {
-  const clients = getStoredClients();
-  const existing = clients.find(c => `${c.prenom} ${c.nom}`.trim() === nomComplet.trim() || c.nom === nomComplet.trim());
-  if (existing) {
-    existing.adresse = validateText(adresse);
-    existing.tel     = validateText(tel, 20);
-    existing.updated = new Date().toISOString();
-  } else {
-    clients.push({
-      id:          Date.now().toString(),
-      nom:         validateText(nomComplet),
-      prenom:      '',
-      adresse:     validateText(adresse),
-      tel:         validateText(tel, 20),
-      commentaire: '',
-      created:     new Date().toISOString()
-    });
-  }
-  _saveClients(clients);
-}
-
-function deleteClient(nom) {
-  const clients = getStoredClients().filter(c =>
-    `${c.prenom} ${c.nom}`.trim() !== nom && c.nom !== nom
+// Sauvegarde rapide depuis le formulaire principal (saveDraft → PDF)
+async function saveClient(nomComplet, adresse, tel) {
+  if (typeof dbAddClient !== 'function') return;
+  const existing = clientsCache.find(c =>
+    `${c.prenom} ${c.nom}`.trim() === nomComplet.trim() || c.nom === nomComplet.trim()
   );
-  _saveClients(clients);
-  renderClientsList();
+  try {
+    if (existing) {
+      await dbUpdateClient(existing.id, {
+        nom:         existing.nom,
+        prenom:      existing.prenom,
+        adresse:     validateText(adresse),
+        tel:         validateText(tel, 20),
+        commentaire: existing.commentaire || ''
+      });
+    } else {
+      await dbAddClient({
+        nom:         validateText(nomComplet),
+        prenom:      '',
+        adresse:     validateText(adresse),
+        tel:         validateText(tel, 20),
+        commentaire: ''
+      });
+    }
+    await refreshClientsCache();
+  } catch (err) {
+    console.error('saveClient:', err);
+  }
 }
 
-// Remplit les champs du formulaire principal depuis un client v2
-function selectClientById(id) {
-  const client = getStoredClients().find(c => c.id === id);
-  if (!client) return;
-
-  const nomAffiche = client.prenom
-    ? `${client.prenom} ${client.nom}`
-    : client.nom;
-
-  document.getElementById('nomClient').value     = nomAffiche;
-  document.getElementById('adresseClient').value = client.adresse || '';
-  document.getElementById('telClient').value     = client.tel     || '';
-
-  const suggestionsEl = document.getElementById('clientSuggestions');
-  if (suggestionsEl) suggestionsEl.classList.remove('active');
-}
-
-// Compat : selectClient par nom (utilisé par anciens boutons modal)
-function selectClient(nom) {
-  const client = getStoredClients().find(c =>
+async function deleteClient(nom) {
+  const client = clientsCache.find(c =>
     `${c.prenom} ${c.nom}`.trim() === nom || c.nom === nom
   );
   if (!client) return;
-  selectClientById(client.id);
+  try {
+    await dbDeleteClient(client.id);
+    await refreshClientsCache();
+    renderClientsList();
+  } catch (err) {
+    console.error('deleteClient:', err);
+    alert('Erreur lors de la suppression : ' + (err.message || ''));
+  }
+}
+
+// Remplit les champs du formulaire principal depuis un client
+function selectClientById(id) {
+  const client = clientsCache.find(c => c.id === id);
+  if (!client) return;
+  const nomAffiche = client.prenom ? `${client.prenom} ${client.nom}` : client.nom;
+  document.getElementById('nomClient').value     = nomAffiche;
+  document.getElementById('adresseClient').value = client.adresse || '';
+  document.getElementById('telClient').value     = client.tel     || '';
+  document.getElementById('clientSuggestions')?.classList.remove('active');
+}
+
+function selectClient(nom) {
+  const client = clientsCache.find(c =>
+    `${c.prenom} ${c.nom}`.trim() === nom || c.nom === nom
+  );
+  if (client) selectClientById(client.id);
 }
 
 // Autocomplete dans le formulaire principal
 function showClientSuggestions(query) {
-  const suggestionsEl = document.getElementById('clientSuggestions');
-  if (!suggestionsEl) return;
+  const sEl = document.getElementById('clientSuggestions');
+  if (!sEl) return;
 
   if (!query) {
-    suggestionsEl.classList.remove('active');
-    suggestionsEl.innerHTML = '';
+    sEl.classList.remove('active');
+    sEl.innerHTML = '';
     return;
   }
 
-  const clients = getStoredClients();
   const q = query.toLowerCase();
-  const filtered = clients
-    .filter(c => {
-      const full = `${c.prenom} ${c.nom} ${c.adresse}`.toLowerCase();
-      return full.includes(q);
-    })
+  const filtered = clientsCache
+    .filter(c => `${c.prenom} ${c.nom} ${c.adresse}`.toLowerCase().includes(q))
     .slice(0, 5);
 
   if (filtered.length === 0) {
-    suggestionsEl.innerHTML = '<div class="suggestion-item">Aucun client trouvé</div>';
-    suggestionsEl.classList.add('active');
+    sEl.innerHTML = '<div class="suggestion-item">Aucun client trouvé</div>';
+    sEl.classList.add('active');
     return;
   }
 
-  suggestionsEl.innerHTML = filtered.map(c => {
-    const nomAffiche = c.prenom ? `${sanitizeInput(c.prenom)} ${sanitizeInput(c.nom)}` : sanitizeInput(c.nom);
+  sEl.innerHTML = filtered.map(c => {
+    const nom = c.prenom ? `${sanitizeInput(c.prenom)} ${sanitizeInput(c.nom)}` : sanitizeInput(c.nom);
     return `
       <div class="suggestion-item" onclick="selectClientById('${c.id}')">
-        ${nomAffiche}<br>
+        ${nom}<br>
         <small>${sanitizeInput(c.adresse || '')}</small>
       </div>`;
   }).join('');
-
-  suggestionsEl.classList.add('active');
+  sEl.classList.add('active');
 }
 
-// Modal clients dans la page principale (index.html)
+// Modal "clients" dans la page principale
 function openClientModal() {
-  const modal = document.getElementById('clientModal');
-  if (modal) {
-    modal.classList.add('active');
-    renderClientsList();
-  }
+  document.getElementById('clientModal')?.classList.add('active');
+  renderClientsList();
 }
 
 function closeClientModal() {
-  const modal = document.getElementById('clientModal');
-  if (modal) modal.classList.remove('active');
+  document.getElementById('clientModal')?.classList.remove('active');
 }
 
 function renderClientsList() {
-  const clientsList = document.getElementById('clientsList');
-  if (!clientsList) return;
+  const list = document.getElementById('clientsList');
+  if (!list) return;
 
-  const clients = getStoredClients();
-
-  if (clients.length === 0) {
-    clientsList.innerHTML = `
+  if (clientsCache.length === 0) {
+    list.innerHTML = `
       <p style="color: var(--text-muted); text-align:center; padding: 16px 0;">
-        Aucun client sauvegardé.<br>
+        Aucun client enregistré.<br>
         <a href="clients.html" style="color: var(--primary);">Gérer les clients →</a>
       </p>`;
     return;
   }
 
-  clientsList.innerHTML = clients.map(c => {
-    const nomAffiche = c.prenom ? `${sanitizeInput(c.prenom)} ${sanitizeInput(c.nom)}` : sanitizeInput(c.nom);
+  list.innerHTML = clientsCache.map(c => {
+    const nom = c.prenom ? `${sanitizeInput(c.prenom)} ${sanitizeInput(c.nom)}` : sanitizeInput(c.nom);
     return `
       <div class="client-item">
         <div class="client-info">
-          <div class="client-name">${nomAffiche}</div>
+          <div class="client-name">${nom}</div>
           <div class="client-details">${sanitizeInput(c.adresse || '')}</div>
           ${c.tel ? `<div class="client-details">${sanitizeInput(c.tel)}</div>` : ''}
         </div>
