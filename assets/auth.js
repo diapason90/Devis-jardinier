@@ -1,45 +1,54 @@
-// Authentification ChrisGarden Pro (localStorage + sessionStorage)
+// Authentification via Supabase Auth (mots de passe hashés, JWT, refresh auto)
+// NB : isAuthenticated() est synchrone — lit le token stocké par Supabase JS
 
-const AUTH_KEY     = 'chrisgarden_auth';
-const SESSION_KEY  = 'chrisgarden_session';
-const DEFAULT_LOGIN    = 'admin';
-const DEFAULT_PASSWORD = 'chrisgarden2026';
+const PROJECT_REF = (typeof SUPABASE_URL === 'string')
+  ? SUPABASE_URL.replace(/https?:\/\//, '').split('.')[0]
+  : '';
+const AUTH_TOKEN_KEY = `sb-${PROJECT_REF}-auth-token`;
 
-function getCredentials() {
+function getStoredSession() {
   try {
-    const raw = localStorage.getItem(AUTH_KEY);
-    return raw ? JSON.parse(raw) : { login: DEFAULT_LOGIN, password: DEFAULT_PASSWORD };
-  } catch {
-    return { login: DEFAULT_LOGIN, password: DEFAULT_PASSWORD };
-  }
-}
-
-function setCredentials(login, password) {
-  localStorage.setItem(AUTH_KEY, JSON.stringify({ login, password }));
+    const raw = localStorage.getItem(AUTH_TOKEN_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
 }
 
 function isAuthenticated() {
-  return sessionStorage.getItem(SESSION_KEY) === '1';
+  const s = getStoredSession();
+  if (!s?.access_token) return false;
+  // expires_at en secondes Unix
+  if (s.expires_at && s.expires_at < Date.now() / 1000) return false;
+  return true;
 }
 
-// Redirige vers login.html si non authentifié
 function checkAuth() {
-  if (!isAuthenticated()) {
-    window.location.href = 'login.html';
-  }
+  if (!isAuthenticated()) window.location.href = 'login.html';
 }
 
-// Retourne true si les identifiants sont corrects
-function doLogin(login, password) {
-  const creds = getCredentials();
-  if (login.trim() === creds.login && password === creds.password) {
-    sessionStorage.setItem(SESSION_KEY, '1');
-    return true;
-  }
-  return false;
+async function doLogin(email, password) {
+  if (!sb) return { ok: false, error: 'Supabase non disponible' };
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  return { ok: !error, error: error?.message };
 }
 
-function logout() {
-  sessionStorage.removeItem(SESSION_KEY);
+async function logout() {
+  if (sb) {
+    try { await sb.auth.signOut(); } catch (e) { console.warn(e); }
+  }
+  if (PROJECT_REF) localStorage.removeItem(AUTH_TOKEN_KEY);
   window.location.href = 'login.html';
+}
+
+async function updatePassword(newPassword) {
+  if (!sb) return { ok: false, error: 'Supabase non disponible' };
+  const { error } = await sb.auth.updateUser({ password: newPassword });
+  return { ok: !error, error: error?.message };
+}
+
+async function getCurrentUser() {
+  if (!sb) return null;
+  try {
+    const { data: { user } } = await sb.auth.getUser();
+    return user;
+  } catch { return null; }
 }

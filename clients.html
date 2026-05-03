@@ -8,11 +8,11 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="assets/style.css">
   <script src="assets/utils.js"></script>
-  <script src="assets/auth.js"></script>
-  <script>checkAuth();</script>
-  <!-- Supabase JS client -->
+  <!-- Supabase JS client (doit être chargé avant auth.js) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="assets/supabase.js"></script>
+  <script src="assets/auth.js"></script>
+  <script>checkAuth();</script>
 </head>
 <body>
 

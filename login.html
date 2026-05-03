@@ -8,6 +8,8 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="assets/style.css">
   <script src="assets/utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/supabase.js"></script>
   <script src="assets/auth.js"></script>
   <script>
     if (isAuthenticated()) window.location.href = 'index.html';
@@ -25,12 +27,12 @@
     <form class="auth-form" onsubmit="handleLogin(event)" autocomplete="on">
 
       <div class="form-group">
-        <label for="loginInput"><i class="fas fa-user"></i> Identifiant</label>
+        <label for="loginInput"><i class="fas fa-envelope"></i> Email</label>
         <input
-          type="text"
+          type="email"
           id="loginInput"
-          placeholder="Votre identifiant"
-          autocomplete="username"
+          placeholder="vous@exemple.com"
+          autocomplete="email"
           required
           autofocus
         >
@@ -54,35 +56,46 @@
 
       <div id="loginError" class="auth-error" style="display:none;">
         <i class="fas fa-exclamation-circle"></i>
-        Identifiant ou mot de passe incorrect.
+        <span id="loginErrorMsg">Email ou mot de passe incorrect.</span>
       </div>
 
-      <button type="submit" class="btn-primary btn-full">
-        <i class="fas fa-sign-in-alt"></i> Se connecter
+      <button type="submit" class="btn-primary btn-full" id="btnLogin">
+        <i class="fas fa-sign-in-alt"></i> <span>Se connecter</span>
       </button>
 
     </form>
 
     <p class="auth-hint">
-      Identifiants par défaut&nbsp;: <strong>admin</strong> / <strong>chrisgarden2026</strong><br>
-      Modifiables dans les Paramètres.
+      <i class="fas fa-shield-halved"></i>
+      Compte sécurisé via Supabase Auth (mots de passe chiffrés).
     </p>
   </div>
 
   <script>
-    function handleLogin(e) {
+    async function handleLogin(e) {
       e.preventDefault();
-      const login    = document.getElementById('loginInput').value;
+      const email    = document.getElementById('loginInput').value.trim();
       const password = document.getElementById('passwordInput').value;
       const errEl    = document.getElementById('loginError');
+      const errMsg   = document.getElementById('loginErrorMsg');
+      const btn      = document.getElementById('btnLogin');
 
-      if (doLogin(login, password)) {
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Connexion...</span>';
+
+      const { ok, error } = await doLogin(email, password);
+
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> <span>Se connecter</span>';
+
+      if (ok) {
         window.location.href = 'index.html';
       } else {
+        errMsg.textContent = error || 'Email ou mot de passe incorrect.';
         errEl.style.display = 'flex';
         document.getElementById('passwordInput').value = '';
         document.getElementById('passwordInput').focus();
-        setTimeout(() => { errEl.style.display = 'none'; }, 4000);
+        setTimeout(() => { errEl.style.display = 'none'; }, 5000);
       }
     }
 
