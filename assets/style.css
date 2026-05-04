@@ -1717,6 +1717,38 @@ input[type="radio"]:checked + .radio-custom::after {
 }
 
 /* ============================================
+   TEMPLATE ITEMS (modal paramètres)
+   ============================================ */
+
+.tpl-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.tpl-item-row {
+  display: flex;
+  gap: var(--space-sm);
+  align-items: center;
+}
+
+.tpl-item-row .tpl-item-prest {
+  flex: 1;
+  min-width: 0;
+}
+
+.tpl-item-row .tpl-item-qty {
+  width: 80px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+  .tpl-item-row { flex-wrap: wrap; }
+  .tpl-item-row .tpl-item-prest { flex: 1 1 100%; }
+  .tpl-item-row .tpl-item-qty   { width: 70px; }
+}
+
+/* ============================================
    KBD (raccourcis clavier)
    ============================================ */
 

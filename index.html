@@ -152,12 +152,10 @@
         </p>
       </div>
 
-      <!-- Templates rapides -->
+      <!-- Templates rapides (chargés depuis Supabase) -->
       <div class="templates-bar">
         <label>Templates rapides :</label>
-        <button class="btn-template" onclick="applyTemplate(0)">⭐ Entretien complet</button>
-        <button class="btn-template" onclick="applyTemplate(1)">⭐ Soin arbres</button>
-        <button class="btn-template" onclick="applyTemplate(2)">⭐ Nettoyage complet</button>
+        <div id="templatesContainer"><i class="fas fa-spinner fa-spin" style="color:var(--primary);"></i></div>
       </div>
 
       <!-- Prestations personnalisées -->

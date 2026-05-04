@@ -15,22 +15,8 @@ const TVA_KEY    = 'chrisgarden_default_tva';
 // Liste des prestations chargée depuis Supabase
 let PRESTATIONS = [];
 
-// Templates rapides (référencés par nom de prestation pour résister aux changements)
-const TEMPLATES = [
-  { name: 'Entretien complet',  items: [
-      { nom: 'Tonte',                qty: 2.5 },
-      { nom: 'Entretien parterres',  qty: 1   },
-      { nom: 'Débroussaillage',      qty: 1   }
-  ]},
-  { name: 'Soin arbres',        items: [
-      { nom: 'Élagage',              qty: 3   },
-      { nom: 'Taille de haies',      qty: 1   }
-  ]},
-  { name: 'Nettoyage complet',  items: [
-      { nom: 'Karcher / Haute pression', qty: 3 },
-      { nom: 'Nettoyage gouttière',      qty: 2 }
-  ]}
-];
+// Templates rapides chargés depuis Supabase
+let TEMPLATES = [];
 
 // Icônes par catégorie (mapping figé, défaut = 🌿)
 const CATEGORY_ICONS = {
@@ -78,6 +64,28 @@ async function loadPrestations() {
     console.error('loadPrestations:', err);
     PRESTATIONS = [];
   }
+}
+
+async function loadTemplates() {
+  if (typeof dbGetTemplates !== 'function') return;
+  try {
+    TEMPLATES = await dbGetTemplates();
+  } catch (err) {
+    console.error('loadTemplates:', err);
+    TEMPLATES = [];
+  }
+}
+
+function renderTemplateButtons() {
+  const container = document.getElementById('templatesContainer');
+  if (!container) return;
+  if (TEMPLATES.length === 0) {
+    container.innerHTML = '<span style="color:var(--text-muted);font-size:0.9rem;">Aucun template — <a href="parametres.html" style="color:var(--primary);">en créer un</a></span>';
+    return;
+  }
+  container.innerHTML = TEMPLATES.map(t =>
+    `<button class="btn-template" onclick="applyTemplate('${t.id}')">⭐ ${sanitizeInput(t.nom)}</button>`
+  ).join('');
 }
 
 function renderPrestations() {
@@ -159,8 +167,9 @@ function renderTags(tagsCsv) {
 document.addEventListener('DOMContentLoaded', async () => {
   loadDefaultTva();
   setupEventListeners();
-  await loadPrestations();
+  await Promise.all([loadPrestations(), loadTemplates()]);
   renderPrestations();
+  renderTemplateButtons();
   loadDraft();
   updateTotal();
 });
@@ -313,19 +322,18 @@ function removeCustom(btn) {
 // TEMPLATES (référencés par nom de prestation)
 // ============================================
 
-function applyTemplate(idx) {
-  if (idx < 0 || idx >= TEMPLATES.length) return;
-  const tpl = TEMPLATES[idx];
+function applyTemplate(id) {
+  const tpl = TEMPLATES.find(t => t.id === id);
+  if (!tpl) return;
+  const items = Array.isArray(tpl.items) ? tpl.items : [];
 
-  // Reset toutes les quantités
   PRESTATIONS.forEach(p => {
     const input = document.getElementById(`qty-${p.id}`);
     if (input) input.value = 0;
   });
 
-  // Applique les items du template (recherche par nom)
   let applied = 0;
-  tpl.items.forEach(item => {
+  items.forEach(item => {
     const prest = PRESTATIONS.find(p => p.nom === item.nom);
     if (prest) {
       const input = document.getElementById(`qty-${prest.id}`);
@@ -334,9 +342,9 @@ function applyTemplate(idx) {
   });
 
   updateTotal();
-  alert(applied === tpl.items.length
-    ? `Template « ${tpl.name} » appliqué !`
-    : `Template « ${tpl.name} » appliqué partiellement (${applied}/${tpl.items.length} prestations trouvées)`);
+  alert(applied === items.length
+    ? `Template « ${tpl.nom} » appliqué !`
+    : `Template « ${tpl.nom} » appliqué partiellement (${applied}/${items.length} prestations trouvées)`);
 }
 
 // ============================================

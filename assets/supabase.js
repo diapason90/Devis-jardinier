@@ -126,3 +126,45 @@ async function dbDeletePrestation(id) {
   const { error } = await sb.from('prestations').delete().eq('id', id);
   if (error) throw error;
 }
+
+// ── Templates ─────────────────────────────────────────────────
+
+async function dbGetTemplates() {
+  if (!sb) return [];
+  const { data, error } = await sb
+    .from('templates')
+    .select('*')
+    .order('ordre', { ascending: true })
+    .order('nom',   { ascending: true });
+  if (error) { console.error('dbGetTemplates:', error); throw error; }
+  return data || [];
+}
+
+async function dbAddTemplate(t) {
+  if (!sb) throw new Error('Supabase non initialisé');
+  const { data, error } = await sb
+    .from('templates')
+    .insert([{ nom: t.nom || '', items: t.items || [], ordre: Number.isFinite(t.ordre) ? t.ordre : 100 }])
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+async function dbUpdateTemplate(id, t) {
+  if (!sb) throw new Error('Supabase non initialisé');
+  const { data, error } = await sb
+    .from('templates')
+    .update({ nom: t.nom || '', items: t.items || [], ordre: Number.isFinite(t.ordre) ? t.ordre : 100 })
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+async function dbDeleteTemplate(id) {
+  if (!sb) throw new Error('Supabase non initialisé');
+  const { error } = await sb.from('templates').delete().eq('id', id);
+  if (error) throw error;
+}

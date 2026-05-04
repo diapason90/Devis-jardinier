@@ -163,6 +163,85 @@
       </div>
     </div>
 
+    <!-- ── Section 1b : Templates rapides ── -->
+    <section class="card">
+      <div class="card-header">
+        <h2>Templates rapides</h2>
+        <button class="btn-primary" onclick="openTemplateModal()">
+          <i class="fas fa-plus"></i> Nouveau template
+        </button>
+      </div>
+      <div id="templatesList" class="prestations-admin-list">
+        <p class="loading-prestations">
+          <i class="fas fa-spinner fa-spin"></i> Chargement…
+        </p>
+      </div>
+    </section>
+
+    <!-- Modal ajout / édition template -->
+    <div id="templateModal" class="modal" onclick="handleTplModalClick(event)">
+      <div class="modal-content modal-large">
+        <div class="modal-header">
+          <h2 id="tplModalTitle">Nouveau template</h2>
+          <button class="close-btn" onclick="closeTplModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="tplEditId">
+
+          <div class="form-row">
+            <div class="form-group" style="flex:2">
+              <label for="tplNom">Nom du template <span class="required">*</span></label>
+              <input type="text" id="tplNom" placeholder="Entretien complet" maxlength="80" required>
+            </div>
+            <div class="form-group">
+              <label for="tplOrdre">Ordre d'affichage</label>
+              <input type="number" id="tplOrdre" placeholder="100" min="0" step="10" max="9999">
+            </div>
+          </div>
+
+          <div style="margin: var(--space-md) 0 var(--space-sm);">
+            <label style="font-weight:600; color:var(--text-primary);">Prestations incluses</label>
+          </div>
+          <div id="tplItemsList" class="tpl-items-list"></div>
+          <button class="btn-add" onclick="addTplItem()" style="margin-top: var(--space-sm);">
+            <i class="fas fa-plus"></i> Ajouter une prestation
+          </button>
+
+          <div id="tplFormError" class="auth-error" style="display:none; margin-top: var(--space-md);">
+            <i class="fas fa-exclamation-circle"></i>
+            <span id="tplFormErrorMsg"></span>
+          </div>
+
+          <div class="modal-actions">
+            <button class="btn-tertiary" onclick="closeTplModal()">Annuler</button>
+            <button class="btn-primary" onclick="saveTemplate()" id="btnSaveTemplate">
+              <i class="fas fa-save"></i> <span>Enregistrer</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal confirmation suppression template -->
+    <div id="deleteTplModal" class="modal" onclick="handleDeleteTplModalClick(event)">
+      <div class="modal-content modal-sm">
+        <div class="modal-header">
+          <h2>Supprimer ce template ?</h2>
+          <button class="close-btn" onclick="closeDeleteTplModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p id="deleteTplName" class="delete-confirm-name"></p>
+          <p class="delete-confirm-text">Cette action est irréversible.</p>
+          <div class="modal-actions">
+            <button class="btn-tertiary" onclick="closeDeleteTplModal()">Annuler</button>
+            <button class="btn-danger" onclick="confirmDeleteTpl()">
+              <i class="fas fa-trash"></i> Supprimer
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ── Section 2 : TVA par défaut ── -->
     <section class="card">
       <div class="card-header">
@@ -544,8 +623,178 @@
       }
     }
 
+    // ── Templates ─────────────────────────────────────────────
+    let templatesCache = [];
+    let pendingDeleteTplId = null;
+
+    async function loadTemplatesAdmin() {
+      try {
+        templatesCache = await dbGetTemplates();
+      } catch (err) {
+        console.error('loadTemplatesAdmin:', err);
+        templatesCache = [];
+      }
+      renderTemplatesAdmin();
+    }
+
+    function renderTemplatesAdmin() {
+      const list = document.getElementById('templatesList');
+      if (templatesCache.length === 0) {
+        list.innerHTML = `
+          <div class="empty-state" style="padding:var(--space-lg);">
+            <div class="empty-icon">⭐</div>
+            <p>Aucun template. Cliquez sur <strong>Nouveau template</strong> pour en créer un.</p>
+          </div>`;
+        return;
+      }
+      list.innerHTML = templatesCache.map(t => {
+        const items = Array.isArray(t.items) ? t.items : [];
+        const tags  = items.map(i => `<span class="tag">${sanitizeInput(i.nom)}</span>`).join('');
+        return `
+          <div class="prestation-admin-row">
+            <div class="prestation-admin-info">
+              <div class="prestation-admin-name">⭐ ${sanitizeInput(t.nom)}</div>
+              <div class="prestation-admin-meta">
+                <span class="meta-price">${items.length} prestation${items.length !== 1 ? 's' : ''}</span>
+                <span class="meta-tags">${tags}</span>
+              </div>
+            </div>
+            <div class="prestation-admin-actions">
+              <button class="btn-icon" title="Modifier" onclick="openTemplateModal('${t.id}')">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button class="btn-icon btn-icon-danger" title="Supprimer"
+                onclick="askDeleteTpl('${t.id}', '${sanitizeInput(t.nom).replace(/'/g, "\\'")}')">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function buildPrestSelectOptions(selectedNom) {
+      const opts = prestationsCache.map(p =>
+        `<option value="${sanitizeInput(p.nom)}"${p.nom === selectedNom ? ' selected' : ''}>${sanitizeInput(p.nom)}</option>`
+      ).join('');
+      return `<option value="">-- Choisir --</option>${opts}`;
+    }
+
+    function addTplItem(nom = '', qty = '') {
+      const row = document.createElement('div');
+      row.className = 'tpl-item-row';
+      row.innerHTML = `
+        <select class="tpl-item-prest">${buildPrestSelectOptions(nom)}</select>
+        <input type="number" class="tpl-item-qty" min="0" step="0.5" value="${qty}" placeholder="Qté">
+        <button class="btn-icon btn-icon-danger" onclick="removeTplItem(this)" title="Retirer">
+          <i class="fas fa-trash"></i>
+        </button>`;
+      document.getElementById('tplItemsList').appendChild(row);
+    }
+
+    function removeTplItem(btn) { btn.parentElement.remove(); }
+
+    function openTemplateModal(id = null) {
+      document.getElementById('tplFormError').style.display = 'none';
+      document.getElementById('tplEditId').value = id || '';
+      document.getElementById('tplModalTitle').textContent = id ? 'Modifier le template' : 'Nouveau template';
+      document.getElementById('tplItemsList').innerHTML = '';
+
+      if (id) {
+        const t = templatesCache.find(x => x.id === id);
+        if (!t) return;
+        document.getElementById('tplNom').value   = t.nom   || '';
+        document.getElementById('tplOrdre').value = t.ordre ?? 100;
+        (Array.isArray(t.items) ? t.items : []).forEach(item => addTplItem(item.nom, item.qty));
+      } else {
+        document.getElementById('tplNom').value   = '';
+        document.getElementById('tplOrdre').value = 100;
+      }
+      document.getElementById('templateModal').classList.add('active');
+      document.getElementById('tplNom').focus();
+    }
+
+    function closeTplModal() {
+      document.getElementById('templateModal').classList.remove('active');
+    }
+
+    function handleTplModalClick(e) {
+      if (e.target === document.getElementById('templateModal')) closeTplModal();
+    }
+
+    async function saveTemplate() {
+      const errEl  = document.getElementById('tplFormError');
+      const errMsg = document.getElementById('tplFormErrorMsg');
+      const btn    = document.getElementById('btnSaveTemplate');
+      errEl.style.display = 'none';
+
+      const nom    = validateText(document.getElementById('tplNom').value, 80);
+      const ordre  = parseInt(document.getElementById('tplOrdre').value, 10);
+      const editId = document.getElementById('tplEditId').value;
+
+      if (!nom) {
+        errMsg.textContent = 'Le nom est obligatoire.';
+        errEl.style.display = 'flex'; return;
+      }
+
+      const rows  = document.querySelectorAll('#tplItemsList .tpl-item-row');
+      const items = [];
+      rows.forEach(row => {
+        const prestNom = row.querySelector('.tpl-item-prest').value.trim();
+        const qty      = parseFloat(row.querySelector('.tpl-item-qty').value);
+        if (prestNom && !isNaN(qty) && qty > 0) items.push({ nom: prestNom, qty });
+      });
+
+      if (items.length === 0) {
+        errMsg.textContent = 'Ajoutez au moins une prestation avec une quantité > 0.';
+        errEl.style.display = 'flex'; return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Enregistrement…</span>';
+      try {
+        const payload = { nom, items, ordre: Number.isFinite(ordre) ? ordre : 100 };
+        if (editId) await dbUpdateTemplate(editId, payload);
+        else        await dbAddTemplate(payload);
+        await loadTemplatesAdmin();
+        closeTplModal();
+      } catch (err) {
+        errMsg.textContent = 'Erreur Supabase : ' + (err.message || '');
+        errEl.style.display = 'flex';
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save"></i> <span>Enregistrer</span>';
+      }
+    }
+
+    function askDeleteTpl(id, nom) {
+      pendingDeleteTplId = id;
+      document.getElementById('deleteTplName').textContent = nom;
+      document.getElementById('deleteTplModal').classList.add('active');
+    }
+
+    function closeDeleteTplModal() {
+      pendingDeleteTplId = null;
+      document.getElementById('deleteTplModal').classList.remove('active');
+    }
+
+    function handleDeleteTplModalClick(e) {
+      if (e.target === document.getElementById('deleteTplModal')) closeDeleteTplModal();
+    }
+
+    async function confirmDeleteTpl() {
+      if (!pendingDeleteTplId) return;
+      try {
+        await dbDeleteTemplate(pendingDeleteTplId);
+        closeDeleteTplModal();
+        await loadTemplatesAdmin();
+      } catch (err) {
+        alert('Erreur suppression : ' + (err.message || ''));
+      }
+    }
+
     // ── Init ──────────────────────────────────────────────────
     loadPrestationsAdmin();
+    loadTemplatesAdmin();
     loadKmRate();
     loadTva();
     loadAuth();
@@ -553,8 +802,10 @@
     // Esc pour fermer les modales
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
-      if (document.getElementById('prestationModal').classList.contains('active')) closePrestationModal();
+      if (document.getElementById('prestationModal').classList.contains('active'))  closePrestationModal();
       if (document.getElementById('deletePrestModal').classList.contains('active')) closeDeletePrestModal();
+      if (document.getElementById('templateModal').classList.contains('active'))    closeTplModal();
+      if (document.getElementById('deleteTplModal').classList.contains('active'))   closeDeleteTplModal();
     });
   </script>
 </body>
