@@ -67,3 +67,62 @@ async function dbDeleteClient(id) {
   const { error } = await sb.from('clients').delete().eq('id', id);
   if (error) throw error;
 }
+
+// ── Prestations ───────────────────────────────────────────────
+
+async function dbGetPrestations() {
+  if (!sb) return [];
+  const { data, error } = await sb
+    .from('prestations')
+    .select('*')
+    .order('ordre', { ascending: true })
+    .order('nom',   { ascending: true });
+  if (error) {
+    console.error('dbGetPrestations:', error);
+    throw error;
+  }
+  return data || [];
+}
+
+async function dbAddPrestation(p) {
+  if (!sb) throw new Error('Supabase non initialisé');
+  const { data, error } = await sb
+    .from('prestations')
+    .insert([{
+      nom:       p.nom       || '',
+      categorie: p.categorie || 'Autres',
+      unite:     p.unite     || 'h',
+      prix:      Number(p.prix) || 0,
+      tags:      p.tags      || '',
+      ordre:     Number.isFinite(p.ordre) ? p.ordre : 100
+    }])
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+async function dbUpdatePrestation(id, p) {
+  if (!sb) throw new Error('Supabase non initialisé');
+  const { data, error } = await sb
+    .from('prestations')
+    .update({
+      nom:       p.nom       || '',
+      categorie: p.categorie || 'Autres',
+      unite:     p.unite     || 'h',
+      prix:      Number(p.prix) || 0,
+      tags:      p.tags      || '',
+      ordre:     Number.isFinite(p.ordre) ? p.ordre : 100
+    })
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+async function dbDeletePrestation(id) {
+  if (!sb) throw new Error('Supabase non initialisé');
+  const { error } = await sb.from('prestations').delete().eq('id', id);
+  if (error) throw error;
+}

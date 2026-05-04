@@ -1516,6 +1516,146 @@ input[type="radio"]:checked + .radio-custom::after {
   margin: 0;
 }
 
+/* ============================================
+   TAGS (chips)
+   ============================================ */
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.tag {
+  display: inline-block;
+  background: var(--primary-bg);
+  color: var(--primary-dark);
+  border: 1px solid var(--primary-light);
+  border-radius: 12px;
+  padding: 2px 10px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* ============================================
+   ADMIN PRESTATIONS (page Paramètres)
+   ============================================ */
+
+.prestations-admin-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+  margin-bottom: var(--space-lg);
+}
+
+.prestation-admin-group {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.prestation-admin-group-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  background: var(--bg-light);
+  padding: 10px var(--space-md);
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--primary);
+  border-bottom: 1px solid var(--border);
+}
+
+.muted-count {
+  margin-left: auto;
+  color: var(--text-muted);
+  font-weight: 400;
+  font-size: 0.85rem;
+}
+
+.prestation-admin-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.prestation-admin-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: 12px var(--space-md);
+  border-bottom: 1px solid var(--border);
+  transition: background var(--transition-fast);
+}
+
+.prestation-admin-row:last-child {
+  border-bottom: none;
+}
+
+.prestation-admin-row:hover {
+  background: var(--primary-bg);
+}
+
+.prestation-admin-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.prestation-admin-name {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+
+.prestation-admin-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+}
+
+.meta-price {
+  color: var(--primary);
+  font-weight: 600;
+  font-family: 'Courier New', monospace;
+}
+
+.meta-tags {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.prestation-admin-actions {
+  display: flex;
+  gap: var(--space-sm);
+  flex-shrink: 0;
+}
+
+/* Loader prestations */
+.loading-prestations {
+  text-align: center;
+  padding: var(--space-xl) var(--space-md);
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+.loading-prestations i {
+  margin-right: var(--space-sm);
+  color: var(--primary);
+}
+
+@media (max-width: 480px) {
+  .prestation-admin-row { flex-wrap: wrap; }
+  .prestation-admin-meta { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .prestation-admin-actions { width: 100%; justify-content: flex-end; }
+}
+
 @media (max-width: 480px) {
   .auth-container { padding: 32px 24px; }
   .toolbar { flex-direction: column; align-items: stretch; }

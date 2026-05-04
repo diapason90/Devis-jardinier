@@ -142,135 +142,14 @@
     <section class="card">
       <div class="card-header">
         <h2>Prestations</h2>
-        <span class="card-info">Cliquez sur une prestation pour l'ajouter</span>
+        <span class="card-info">Encodez les quantités pour chaque prestation utilisée</span>
       </div>
 
-      <!-- Groupe 1 : Travaux au sol -->
-      <div class="prestation-group">
-        <div class="group-header">
-          <span class="group-icon">🌱</span>
-          <h3>Travaux au sol</h3>
-          <span class="group-count" id="count-sol">0</span>
-        </div>
-        <div class="prestations-grid">
-          <div class="prestation-item">
-            <div class="prestation-content">
-              <span class="prestation-name">Tonte</span>
-              <span class="prestation-price">20 €/h</span>
-            </div>
-            <input type="number" class="prestation-qty" id="qty-0" min="0" step="0.5" value="0" onchange="updateTotal()">
-          </div>
-          <div class="prestation-item">
-            <div class="prestation-content">
-              <span class="prestation-name">Débroussaillage</span>
-              <span class="prestation-price">20 €/h</span>
-            </div>
-            <input type="number" class="prestation-qty" id="qty-1" min="0" step="0.5" value="0" onchange="updateTotal()">
-          </div>
-          <div class="prestation-item">
-            <div class="prestation-content">
-              <span class="prestation-name">Scarification pelouse</span>
-              <span class="prestation-price">24 €/h</span>
-            </div>
-            <input type="number" class="prestation-qty" id="qty-9" min="0" step="0.5" value="0" onchange="updateTotal()">
-          </div>
-        </div>
-      </div>
-
-      <!-- Groupe 2 : Taille & Élagage -->
-      <div class="prestation-group">
-        <div class="group-header">
-          <span class="group-icon">✂️</span>
-          <h3>Taille & Élagage</h3>
-          <span class="group-count" id="count-taille">0</span>
-        </div>
-        <div class="prestations-grid">
-          <div class="prestation-item">
-            <div class="prestation-content">
-              <span class="prestation-name">Taille de haies</span>
-              <span class="prestation-price">24 €/h</span>
-            </div>
-            <input type="number" class="prestation-qty" id="qty-2" min="0" step="0.5" value="0" onchange="updateTotal()">
-          </div>
-          <div class="prestation-item">
-            <div class="prestation-content">
-              <span class="prestation-name">Élagage</span>
-              <span class="prestation-price">30 €/h</span>
-            </div>
-            <input type="number" class="prestation-qty" id="qty-3" min="0" step="0.5" value="0" onchange="updateTotal()">
-          </div>
-          <div class="prestation-item">
-            <div class="prestation-content">
-              <span class="prestation-name">Entretien parterres</span>
-              <span class="prestation-price">22 €/h</span>
-            </div>
-            <input type="number" class="prestation-qty" id="qty-4" min="0" step="0.5" value="0" onchange="updateTotal()">
-          </div>
-        </div>
-      </div>
-
-      <!-- Groupe 3 : Services spécialisés -->
-      <div class="prestation-group">
-        <div class="group-header">
-          <span class="group-icon">🔧</span>
-          <h3>Services spécialisés</h3>
-          <span class="group-count" id="count-special">0</span>
-        </div>
-        <div class="prestations-grid">
-          <div class="prestation-item">
-            <div class="prestation-content">
-              <span class="prestation-name">Nettoyage gouttière</span>
-              <span class="prestation-price">26 €/h</span>
-            </div>
-            <input type="number" class="prestation-qty" id="qty-5" min="0" step="0.5" value="0" onchange="updateTotal()">
-          </div>
-          <div class="prestation-item">
-            <div class="prestation-content">
-              <span class="prestation-name">Kärcher / Haute pression</span>
-              <span class="prestation-price">24 €/h</span>
-            </div>
-            <input type="number" class="prestation-qty" id="qty-6" min="0" step="0.5" value="0" onchange="updateTotal()">
-          </div>
-          <div class="prestation-item">
-            <div class="prestation-content">
-              <span class="prestation-name">Plantation arbustes/arbres</span>
-              <span class="prestation-price">25 €/h</span>
-            </div>
-            <input type="number" class="prestation-qty" id="qty-8" min="0" step="0.5" value="0" onchange="updateTotal()">
-          </div>
-          <div class="prestation-item">
-            <div class="prestation-content">
-              <span class="prestation-name">Ramassage / évacuation déchets</span>
-              <span class="prestation-price">20 €/remorque</span>
-            </div>
-            <input type="number" class="prestation-qty" id="qty-7" min="0" step="0.5" value="0" onchange="updateTotal()">
-          </div>
-        </div>
-      </div>
-
-      <!-- Groupe 4 : Forfaits -->
-      <div class="prestation-group">
-        <div class="group-header">
-          <span class="group-icon">📦</span>
-          <h3>Forfaits</h3>
-          <span class="group-count" id="count-forfait">0</span>
-        </div>
-        <div class="prestations-grid">
-          <div class="prestation-item">
-            <div class="prestation-content">
-              <span class="prestation-name">Forfait journalier</span>
-              <span class="prestation-price">160 €/jour</span>
-            </div>
-            <input type="number" class="prestation-qty" id="qty-10" min="0" step="0.5" value="0" onchange="updateTotal()">
-          </div>
-          <div class="prestation-item">
-            <div class="prestation-content">
-              <span class="prestation-name">Location machine unitaire</span>
-              <span class="prestation-price">50 €/unité</span>
-            </div>
-            <input type="number" class="prestation-qty" id="qty-11" min="0" step="0.5" value="0" onchange="updateTotal()">
-          </div>
-        </div>
+      <!-- Conteneur des prestations (rendu dynamique depuis Supabase) -->
+      <div id="prestationsContainer">
+        <p class="loading-prestations">
+          <i class="fas fa-spinner fa-spin"></i> Chargement des prestations…
+        </p>
       </div>
 
       <!-- Templates rapides -->

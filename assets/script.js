@@ -1,4 +1,4 @@
-// ChrisGarden Pro - Logique principale
+// ChrisGarden Pro - Logique principale (prestations dynamiques depuis Supabase)
 
 const { jsPDF } = window.jspdf;
 
@@ -9,34 +9,45 @@ const fmt = new Intl.NumberFormat('fr-FR', {
   maximumFractionDigits: 2
 });
 
-const PRICES_KEY   = 'chrisgarden_prices';
-const TVA_KEY      = 'chrisgarden_default_tva';
+const PRICES_KEY = 'chrisgarden_prices';   // Pour le taux km uniquement
+const TVA_KEY    = 'chrisgarden_default_tva';
 
-// Prix de référence (surchargés par les paramètres)
-const PRESTATIONS = [
-  { name: 'Tonte',                          price: 20,  unit: 'h'        },
-  { name: 'Débroussaillage',                price: 20,  unit: 'h'        },
-  { name: 'Taille de haies',               price: 24,  unit: 'h'        },
-  { name: 'Élagage',                        price: 30,  unit: 'h'        },
-  { name: 'Entretien parterres',            price: 22,  unit: 'h'        },
-  { name: 'Nettoyage gouttière',            price: 26,  unit: 'h'        },
-  { name: 'Karcher / Haute pression',       price: 24,  unit: 'h'        },
-  { name: 'Ramassage / évacuation déchets', price: 20,  unit: 'remorque' },
-  { name: 'Plantation arbustes / arbres',   price: 25,  unit: 'h'        },
-  { name: 'Scarification pelouse',          price: 24,  unit: 'h'        },
-  { name: 'Forfait journalier',             price: 160, unit: 'jour'     },
-  { name: 'Location machine unitaire',      price: 50,  unit: 'unité'    },
+// Liste des prestations chargée depuis Supabase
+let PRESTATIONS = [];
+
+// Templates rapides (référencés par nom de prestation pour résister aux changements)
+const TEMPLATES = [
+  { name: 'Entretien complet',  items: [
+      { nom: 'Tonte',                qty: 2.5 },
+      { nom: 'Entretien parterres',  qty: 1   },
+      { nom: 'Débroussaillage',      qty: 1   }
+  ]},
+  { name: 'Soin arbres',        items: [
+      { nom: 'Élagage',              qty: 3   },
+      { nom: 'Taille de haies',      qty: 1   }
+  ]},
+  { name: 'Nettoyage complet',  items: [
+      { nom: 'Karcher / Haute pression', qty: 3 },
+      { nom: 'Nettoyage gouttière',      qty: 2 }
+  ]}
 ];
 
-// Applique les prix personnalisés depuis localStorage
-function loadCustomPrices() {
-  try {
-    const stored = JSON.parse(localStorage.getItem(PRICES_KEY) || '{}');
-    PRESTATIONS.forEach((p, i) => {
-      if (stored[i] !== undefined) p.price = stored[i];
-    });
-    // Taux km stocké séparément, lu dans updateTotal()
-  } catch { /* garde les prix par défaut */ }
+// Icônes par catégorie (mapping figé, défaut = 🌿)
+const CATEGORY_ICONS = {
+  'Travaux au sol':       '🌱',
+  'Taille & Élagage':     '✂️',
+  'Services spécialisés': '🔧',
+  'Forfaits':             '📦'
+};
+const DEFAULT_CATEGORY_ICON = '🌿';
+
+function categoryIcon(cat) {
+  return CATEGORY_ICONS[cat] || DEFAULT_CATEGORY_ICON;
+}
+
+// Libellé d'unité humain
+function unitLabel(unite) {
+  return ({ h: 'h', min: 'min', unite: 'unité' })[unite] || unite || '';
 }
 
 function getKmRate() {
@@ -55,42 +66,103 @@ function loadDefaultTva() {
   }
 }
 
-const TEMPLATES = [
-  {
-    name: 'Entretien complet',
-    items: [
-      { idx: 0, qty: 2.5 },
-      { idx: 4, qty: 1 },
-      { idx: 1, qty: 1 }
-    ]
-  },
-  {
-    name: 'Soin arbres',
-    items: [
-      { idx: 3, qty: 3 },
-      { idx: 2, qty: 1 }
-    ]
-  },
-  {
-    name: 'Nettoyage complet',
-    items: [
-      { idx: 6, qty: 3 },
-      { idx: 5, qty: 2 }
-    ]
+// ============================================
+// CHARGEMENT & RENDU DES PRESTATIONS
+// ============================================
+
+async function loadPrestations() {
+  if (typeof dbGetPrestations !== 'function') return;
+  try {
+    PRESTATIONS = await dbGetPrestations();
+  } catch (err) {
+    console.error('loadPrestations:', err);
+    PRESTATIONS = [];
   }
-];
+}
+
+function renderPrestations() {
+  const container = document.getElementById('prestationsContainer');
+  if (!container) return;
+
+  if (PRESTATIONS.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state" style="padding: var(--space-lg);">
+        <div class="empty-icon">🌿</div>
+        <h3>Aucune prestation</h3>
+        <p>Ajoutez vos prestations dans la page <a href="parametres.html" style="color:var(--primary);font-weight:600;">Paramètres</a>.</p>
+      </div>`;
+    return;
+  }
+
+  // Regroupement par catégorie (préserve l'ordre d'apparition)
+  const groups = new Map();
+  PRESTATIONS.forEach(p => {
+    if (!groups.has(p.categorie)) groups.set(p.categorie, []);
+    groups.get(p.categorie).push(p);
+  });
+
+  let html = '';
+  groups.forEach((prests, cat) => {
+    html += `
+      <div class="prestation-group" data-category="${sanitizeInput(cat)}">
+        <div class="group-header">
+          <span class="group-icon">${categoryIcon(cat)}</span>
+          <h3>${sanitizeInput(cat)}</h3>
+          <span class="group-count">0</span>
+        </div>
+        <div class="prestations-grid">
+          ${prests.map(p => `
+            <div class="prestation-item">
+              <div class="prestation-content">
+                <span class="prestation-name">${sanitizeInput(p.nom)}</span>
+                <span class="prestation-price">${formatPrice(p.prix)} €/${sanitizeInput(unitLabel(p.unite))}</span>
+                ${renderTags(p.tags)}
+              </div>
+              <input
+                type="number"
+                class="prestation-qty"
+                id="qty-${p.id}"
+                data-id="${p.id}"
+                min="0"
+                step="${p.unite === 'min' ? '5' : '0.5'}"
+                value="0"
+                onchange="updateTotal()"
+                title="Quantité en ${unitLabel(p.unite)}"
+              >
+            </div>
+          `).join('')}
+        </div>
+      </div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+function formatPrice(n) {
+  const num = Number(n) || 0;
+  return num % 1 === 0 ? String(num) : num.toFixed(2).replace(/\.?0+$/, '');
+}
+
+function renderTags(tagsCsv) {
+  if (!tagsCsv) return '';
+  const list = tagsCsv.split(',').map(t => t.trim()).filter(Boolean);
+  if (list.length === 0) return '';
+  return `<div class="tag-list">${
+    list.map(t => `<span class="tag">${sanitizeInput(t)}</span>`).join('')
+  }</div>`;
+}
 
 // ============================================
 // INITIALISATION
 // ============================================
 
-document.addEventListener('DOMContentLoaded', () => {
-  loadCustomPrices();
+document.addEventListener('DOMContentLoaded', async () => {
   loadDefaultTva();
-  loadDraft();
   setupEventListeners();
+  await loadPrestations();
+  renderPrestations();
+  loadDraft();
   updateTotal();
-  updateGroupCounts();
 });
 
 function setupEventListeners() {
@@ -157,20 +229,20 @@ function updateTVALabel() {
 function updateTotal() {
   let subtotal = 0;
 
-  PRESTATIONS.forEach((p, i) => {
-    const input = document.getElementById(`qty-${i}`);
+  PRESTATIONS.forEach(p => {
+    const input = document.getElementById(`qty-${p.id}`);
     if (input) {
       const qty = validateQuantity(input.value);
       input.value = qty;
-      subtotal += qty * p.price;
+      subtotal += qty * Number(p.prix || 0);
     }
   });
 
   document.querySelectorAll('.custom-item').forEach(div => {
     const inputs = div.querySelectorAll('input');
-    if (inputs.length >= 2) {
+    if (inputs.length >= 3) {
       const price = validatePrice(inputs[1].value);
-      const qty = validateQuantity(inputs[2].value);
+      const qty   = validateQuantity(inputs[2].value);
       subtotal += price * qty;
     }
   });
@@ -178,40 +250,34 @@ function updateTotal() {
   const km = validateQuantity(document.getElementById('km').value);
   subtotal += km * getKmRate();
 
-  const tvaRate = parseFloat(document.querySelector('input[name="tvaRate"]:checked').value);
+  const tvaRate   = parseFloat(document.querySelector('input[name="tvaRate"]:checked').value);
   const tvaAmount = subtotal * (tvaRate / 100);
-  const total = subtotal + tvaAmount;
+  const total     = subtotal + tvaAmount;
 
   const sousTotal = document.getElementById('sousTotal');
-  const tva = document.getElementById('tva');
-  const totalEl = document.getElementById('total');
+  const tva       = document.getElementById('tva');
+  const totalEl   = document.getElementById('total');
 
   if (sousTotal) sousTotal.textContent = fmt.format(subtotal);
-  if (tva) tva.textContent = fmt.format(tvaAmount);
-  if (totalEl) totalEl.textContent = fmt.format(total);
+  if (tva)       tva.textContent       = fmt.format(tvaAmount);
+  if (totalEl)   totalEl.textContent   = fmt.format(total);
 
   updateGroupCounts();
 }
 
 function updateGroupCounts() {
-  const getQty = (idx) => parseFloat(document.getElementById(`qty-${idx}`)?.value) || 0;
-
-  const counts = {
-    sol:     [0, 1, 9].filter(i => getQty(i) > 0).length,
-    taille:  [2, 3, 4].filter(i => getQty(i) > 0).length,
-    special: [5, 6, 7, 8].filter(i => getQty(i) > 0).length,
-    forfait: [10, 11].filter(i => getQty(i) > 0).length
-  };
-
-  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-  set('count-sol', counts.sol);
-  set('count-taille', counts.taille);
-  set('count-special', counts.special);
-  set('count-forfait', counts.forfait);
+  document.querySelectorAll('.prestation-group').forEach(group => {
+    let count = 0;
+    group.querySelectorAll('.prestation-qty').forEach(input => {
+      if ((parseFloat(input.value) || 0) > 0) count++;
+    });
+    const counter = group.querySelector('.group-count');
+    if (counter) counter.textContent = count;
+  });
 }
 
 // ============================================
-// PRESTATIONS PERSONNALISÉES
+// PRESTATIONS PERSONNALISÉES (custom)
 // ============================================
 
 function addCustom() {
@@ -226,9 +292,9 @@ function addCustom() {
   const div = document.createElement('div');
   div.className = 'custom-item';
   div.innerHTML = `
-    <input type="text" placeholder="Description" maxlength="${MAX_INPUT_LENGTH}" onchange="updateTotal()">
-    <input type="number" placeholder="Prix €" min="0" step="0.01" max="999999" onchange="updateTotal()">
-    <input type="number" placeholder="Qté" min="0" step="0.5" max="${MAX_QUANTITY}" onchange="updateTotal()">
+    <input type="text"   placeholder="Description" maxlength="${MAX_INPUT_LENGTH}" onchange="updateTotal()">
+    <input type="number" placeholder="Prix €"      min="0" step="0.01" max="999999" onchange="updateTotal()">
+    <input type="number" placeholder="Qté"         min="0" step="0.5"  max="${MAX_QUANTITY}" onchange="updateTotal()">
     <button class="btn-remove" onclick="removeCustom(this)" title="Supprimer">
       <i class="fas fa-trash"></i>
     </button>
@@ -244,30 +310,37 @@ function removeCustom(btn) {
 }
 
 // ============================================
-// TEMPLATES
+// TEMPLATES (référencés par nom de prestation)
 // ============================================
 
-function applyTemplate(templateIndex) {
-  if (templateIndex < 0 || templateIndex >= TEMPLATES.length) return;
+function applyTemplate(idx) {
+  if (idx < 0 || idx >= TEMPLATES.length) return;
+  const tpl = TEMPLATES[idx];
 
-  const template = TEMPLATES[templateIndex];
-
-  PRESTATIONS.forEach((_, i) => {
-    const input = document.getElementById(`qty-${i}`);
+  // Reset toutes les quantités
+  PRESTATIONS.forEach(p => {
+    const input = document.getElementById(`qty-${p.id}`);
     if (input) input.value = 0;
   });
 
-  template.items.forEach(({ idx, qty }) => {
-    const input = document.getElementById(`qty-${idx}`);
-    if (input) input.value = qty;
+  // Applique les items du template (recherche par nom)
+  let applied = 0;
+  tpl.items.forEach(item => {
+    const prest = PRESTATIONS.find(p => p.nom === item.nom);
+    if (prest) {
+      const input = document.getElementById(`qty-${prest.id}`);
+      if (input) { input.value = item.qty; applied++; }
+    }
   });
 
   updateTotal();
-  alert(`Template "${template.name}" appliqué !`);
+  alert(applied === tpl.items.length
+    ? `Template « ${tpl.name} » appliqué !`
+    : `Template « ${tpl.name} » appliqué partiellement (${applied}/${tpl.items.length} prestations trouvées)`);
 }
 
 // ============================================
-// SAUVEGARDE & CHARGEMENT
+// SAUVEGARDE & CHARGEMENT (brouillon)
 // ============================================
 
 function saveDraft() {
@@ -280,12 +353,10 @@ function saveDraft() {
 
   try {
     localStorage.setItem('chrisgarden_draft', JSON.stringify(data));
-
-    const clients = getStoredClients();
-    if (!clients[data.nom]) {
+    // Ajoute le client au carnet d'adresses Supabase si nouveau
+    if (typeof saveClient === 'function') {
       saveClient(data.nom, data.adresse, data.tel);
     }
-
     alert('Document sauvegardé !');
   } catch (err) {
     console.error('Erreur sauvegarde:', err);
@@ -297,7 +368,6 @@ function loadDraft() {
   try {
     const draft = localStorage.getItem('chrisgarden_draft');
     if (!draft) return;
-
     const data = JSON.parse(draft);
 
     const typeRadio = document.querySelector(`input[name="docType"][value="${data.type}"]`);
@@ -306,10 +376,10 @@ function loadDraft() {
     const tvaRadio = document.querySelector(`input[name="tvaRate"][value="${data.tvaRate}"]`);
     if (tvaRadio) tvaRadio.checked = true;
 
-    document.getElementById('nomClient').value = data.nom || '';
+    document.getElementById('nomClient').value     = data.nom     || '';
     document.getElementById('adresseClient').value = data.adresse || '';
-    document.getElementById('telClient').value = data.tel || '';
-    document.getElementById('km').value = data.km || '';
+    document.getElementById('telClient').value     = data.tel     || '';
+    document.getElementById('km').value            = data.km      || '';
   } catch (err) {
     console.error('Erreur chargement:', err);
   }
@@ -321,7 +391,7 @@ function loadDraft() {
 
 function getNextNumber() {
   const year = new Date().getFullYear();
-  const key = `chrisgarden_num_${year}`;
+  const key  = `chrisgarden_num_${year}`;
   const last = parseInt(localStorage.getItem(key) || '0', 10) + 1;
   localStorage.setItem(key, last);
   return `${year}-${String(last).padStart(3, '0')}`;
@@ -342,7 +412,7 @@ function generatePDF() {
 
     const num = getNextNumber();
     const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageWidth  = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
 
     // Header
@@ -364,24 +434,24 @@ function generatePDF() {
     if (data.tel) { doc.text(`Téléphone : ${sanitizeInput(data.tel)}`, 10, y); y += 6; }
     doc.text(`Date : ${new Date().toLocaleDateString('fr-FR')}`, 10, y); y += 10;
 
-    // En-tête tableau
+    // Tableau
     doc.setFontSize(10);
     doc.text('Description', 10, y);
-    doc.text('Qté', 100, y);
-    doc.text('Prix', 130, y);
-    doc.text('Total', 160, y);
+    doc.text('Qté',         100, y);
+    doc.text('Prix',        130, y);
+    doc.text('Total',       160, y);
     y += 5;
 
     let subtotal = 0;
 
-    PRESTATIONS.forEach((p, i) => {
-      const input = document.getElementById(`qty-${i}`);
+    PRESTATIONS.forEach(p => {
+      const input = document.getElementById(`qty-${p.id}`);
       const qty = input ? validateQuantity(input.value) : 0;
       if (qty > 0) {
-        const totalItem = qty * p.price;
-        doc.text(sanitizeInput(p.name), 10, y);
-        doc.text(qty.toString(), 100, y);
-        doc.text(fmt.format(p.price), 130, y);
+        const totalItem = qty * Number(p.prix || 0);
+        doc.text(sanitizeInput(p.nom), 10, y);
+        doc.text(`${qty} ${unitLabel(p.unite)}`, 100, y);
+        doc.text(fmt.format(p.prix), 130, y);
         doc.text(fmt.format(totalItem), 160, y);
         subtotal += totalItem;
         y += 5;
@@ -391,9 +461,9 @@ function generatePDF() {
     document.querySelectorAll('.custom-item').forEach(div => {
       const inputs = div.querySelectorAll('input');
       if (inputs.length >= 3) {
-        const desc = validateText(inputs[0].value);
+        const desc  = validateText(inputs[0].value);
         const price = validatePrice(inputs[1].value);
-        const qty = validateQuantity(inputs[2].value);
+        const qty   = validateQuantity(inputs[2].value);
         if (desc && price && qty) {
           const totalItem = price * qty;
           doc.text(sanitizeInput(desc), 10, y);
@@ -410,16 +480,15 @@ function generatePDF() {
       const kmRate  = getKmRate();
       const totalKm = data.km * kmRate;
       doc.text('Frais kilométriques', 10, y);
-      doc.text(data.km.toString(), 100, y);
+      doc.text(`${data.km} km`, 100, y);
       doc.text(fmt.format(kmRate), 130, y);
       doc.text(fmt.format(totalKm), 160, y);
       subtotal += totalKm;
       y += 5;
     }
 
-    // Résumé
     const tvaAmount = subtotal * (data.tvaRate / 100);
-    const totalTTC = subtotal + tvaAmount;
+    const totalTTC  = subtotal + tvaAmount;
 
     y += 5;
     doc.setFontSize(11);
@@ -429,7 +498,6 @@ function generatePDF() {
     doc.setFont(undefined, 'bold');
     doc.text(`TOTAL TTC : ${fmt.format(totalTTC)}`, 10, y);
 
-    // Signature
     y = pageHeight - 20;
     doc.setFont(undefined, 'normal');
     doc.setFontSize(10);
@@ -450,37 +518,37 @@ function generatePDF() {
 function exportCSV() {
   try {
     const data = getData();
-    let csv = 'Description;Quantité;Prix unitaire;Total\n';
+    let csv = 'Description;Quantité;Unité;Prix unitaire;Total\n';
 
-    PRESTATIONS.forEach((p, i) => {
-      const input = document.getElementById(`qty-${i}`);
+    PRESTATIONS.forEach(p => {
+      const input = document.getElementById(`qty-${p.id}`);
       const qty = input ? validateQuantity(input.value) : 0;
       if (qty > 0) {
-        csv += `"${p.name}";${qty};"${p.price} €";"${qty * p.price} €"\n`;
+        csv += `"${p.nom}";${qty};"${unitLabel(p.unite)}";"${p.prix} €";"${qty * Number(p.prix || 0)} €"\n`;
       }
     });
 
     document.querySelectorAll('.custom-item').forEach(div => {
       const inputs = div.querySelectorAll('input');
       if (inputs.length >= 3) {
-        const desc = validateText(inputs[0].value);
+        const desc  = validateText(inputs[0].value);
         const price = validatePrice(inputs[1].value);
-        const qty = validateQuantity(inputs[2].value);
+        const qty   = validateQuantity(inputs[2].value);
         if (desc && price && qty) {
-          csv += `"${desc}";${qty};"${price} €";"${price * qty} €"\n`;
+          csv += `"${desc}";${qty};"";"${price} €";"${price * qty} €"\n`;
         }
       }
     });
 
     csv += '\n';
-    csv += `Sous-total;;;;;${document.getElementById('sousTotal')?.textContent || '0,00 €'}\n`;
-    csv += `TVA;;;;;${document.getElementById('tva')?.textContent || '0,00 €'}\n`;
-    csv += `Total TTC;;;;;${document.getElementById('total')?.textContent || '0,00 €'}\n`;
+    csv += `Sous-total;;;;${document.getElementById('sousTotal')?.textContent || '0,00 €'}\n`;
+    csv += `TVA;;;;${document.getElementById('tva')?.textContent || '0,00 €'}\n`;
+    csv += `Total TTC;;;;${document.getElementById('total')?.textContent || '0,00 €'}\n`;
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     const year = new Date().getFullYear();
-    const num = String(parseInt(localStorage.getItem(`chrisgarden_num_${year}`) || 0)).padStart(3, '0');
+    const num  = String(parseInt(localStorage.getItem(`chrisgarden_num_${year}`) || 0)).padStart(3, '0');
 
     link.setAttribute('href', URL.createObjectURL(blob));
     link.setAttribute('download', `export_${year}-${num}_${data.nom.replace(/\s+/g, '_')}.csv`);

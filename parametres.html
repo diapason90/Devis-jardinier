@@ -38,27 +38,22 @@
 
   <main class="main-container">
 
-    <!-- ── Section 1 : Tarifs ── -->
+    <!-- ── Section 1 : Prestations ── -->
     <section class="card">
       <div class="card-header">
-        <h2>Tarifs des prestations</h2>
-        <button class="btn-tertiary btn-sm" onclick="resetPrices()">
-          <i class="fas fa-undo"></i> Réinitialiser
+        <h2>Catalogue des prestations</h2>
+        <button class="btn-primary" onclick="openPrestationModal()">
+          <i class="fas fa-plus"></i> Nouvelle prestation
         </button>
       </div>
 
-      <table class="params-table">
-        <thead>
-          <tr>
-            <th>Prestation</th>
-            <th>Unité</th>
-            <th class="th-price">Prix (€)</th>
-          </tr>
-        </thead>
-        <tbody id="prestationsBody"></tbody>
-      </table>
+      <div id="prestationsList" class="prestations-admin-list">
+        <p class="loading-prestations">
+          <i class="fas fa-spinner fa-spin"></i> Chargement…
+        </p>
+      </div>
 
-      <!-- Frais km -->
+      <!-- Frais km (reste en localStorage) -->
       <div class="km-row">
         <div class="km-label">
           <i class="fas fa-car"></i>
@@ -74,19 +69,99 @@
             step="0.01"
             max="9.99"
             value="0.25"
+            onchange="saveKmRate()"
           >
         </div>
       </div>
-
-      <div class="section-actions">
-        <button class="btn-primary" onclick="savePrices()">
-          <i class="fas fa-save"></i> Enregistrer les tarifs
-        </button>
-      </div>
       <div id="pricesSaved" class="save-feedback" style="display:none;">
-        <i class="fas fa-check-circle"></i> Tarifs enregistrés !
+        <i class="fas fa-check-circle"></i> Taux km enregistré !
       </div>
     </section>
+
+    <!-- Modal ajout / édition prestation -->
+    <div id="prestationModal" class="modal" onclick="handlePrestationModalClick(event)">
+      <div class="modal-content modal-large">
+        <div class="modal-header">
+          <h2 id="prestationModalTitle">Nouvelle prestation</h2>
+          <button class="close-btn" onclick="closePrestationModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="prestEditId">
+
+          <div class="form-group">
+            <label for="prestNom">Nom <span class="required">*</span></label>
+            <input type="text" id="prestNom" placeholder="Tonte" maxlength="100" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="prestCategorie">Catégorie <span class="required">*</span></label>
+              <input type="text" id="prestCategorie" list="categoriesList" placeholder="Travaux au sol" maxlength="50" required>
+              <datalist id="categoriesList"></datalist>
+            </div>
+            <div class="form-group">
+              <label for="prestUnite">Unité de facturation <span class="required">*</span></label>
+              <select id="prestUnite">
+                <option value="h">Heure (€/h)</option>
+                <option value="min">Minute (€/min)</option>
+                <option value="unite">Unité (€/unité)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="prestPrix">Prix <span class="required">*</span></label>
+              <input type="number" id="prestPrix" placeholder="20" min="0" step="0.01" max="99999" required>
+            </div>
+            <div class="form-group">
+              <label for="prestOrdre">Ordre d'affichage</label>
+              <input type="number" id="prestOrdre" placeholder="100" min="0" step="10" max="9999">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="prestTags">Tags (séparés par virgules)</label>
+            <input type="text" id="prestTags" placeholder="tonte, pelouse, printemps" maxlength="200">
+            <small style="color: var(--text-muted); font-size: 0.8rem;">
+              Aide pour rechercher / filtrer. Ex&nbsp;: <em>urgent</em>, <em>récurrent</em>, <em>été</em>…
+            </small>
+          </div>
+
+          <div id="prestFormError" class="auth-error" style="display:none;">
+            <i class="fas fa-exclamation-circle"></i>
+            <span id="prestFormErrorMsg"></span>
+          </div>
+
+          <div class="modal-actions">
+            <button class="btn-tertiary" onclick="closePrestationModal()">Annuler</button>
+            <button class="btn-primary" onclick="savePrestation()" id="btnSavePrestation">
+              <i class="fas fa-save"></i> <span>Enregistrer</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal confirmation suppression -->
+    <div id="deletePrestModal" class="modal" onclick="handleDeletePrestModalClick(event)">
+      <div class="modal-content modal-sm">
+        <div class="modal-header">
+          <h2>Supprimer cette prestation ?</h2>
+          <button class="close-btn" onclick="closeDeletePrestModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p id="deletePrestName" class="delete-confirm-name"></p>
+          <p class="delete-confirm-text">Cette action est irréversible.</p>
+          <div class="modal-actions">
+            <button class="btn-tertiary" onclick="closeDeletePrestModal()">Annuler</button>
+            <button class="btn-danger" onclick="confirmDeletePrest()">
+              <i class="fas fa-trash"></i> Supprimer
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- ── Section 2 : TVA par défaut ── -->
     <section class="card">
@@ -180,66 +255,217 @@
   </main>
 
   <script>
-    const PRICES_KEY   = 'chrisgarden_prices';
-    const TVA_KEY      = 'chrisgarden_default_tva';
+    const PRICES_KEY = 'chrisgarden_prices';   // Pour le taux km uniquement
+    const TVA_KEY    = 'chrisgarden_default_tva';
 
-    const PRESTATIONS_DEF = [
-      { name: 'Tonte',                          unit: 'h',        defaultPrice: 20  },
-      { name: 'Débroussaillage',                unit: 'h',        defaultPrice: 20  },
-      { name: 'Taille de haies',                unit: 'h',        defaultPrice: 24  },
-      { name: 'Élagage',                        unit: 'h',        defaultPrice: 30  },
-      { name: 'Entretien parterres',            unit: 'h',        defaultPrice: 22  },
-      { name: 'Nettoyage gouttière',            unit: 'h',        defaultPrice: 26  },
-      { name: 'Karcher / Haute pression',       unit: 'h',        defaultPrice: 24  },
-      { name: 'Ramassage / évacuation déchets', unit: 'remorque', defaultPrice: 20  },
-      { name: 'Plantation arbustes / arbres',   unit: 'h',        defaultPrice: 25  },
-      { name: 'Scarification pelouse',          unit: 'h',        defaultPrice: 24  },
-      { name: 'Forfait journalier',             unit: 'jour',     defaultPrice: 160 },
-      { name: 'Location machine unitaire',      unit: 'unité',    defaultPrice: 50  },
-    ];
-
-    const GROUP_LABELS = {
-      0: '🌱 Travaux au sol',
-      2: '✂️ Taille & Élagage',
-      5: '🔧 Services spécialisés',
-      10: '📦 Forfaits',
+    const CATEGORY_ICONS = {
+      'Travaux au sol':       '🌱',
+      'Taille & Élagage':     '✂️',
+      'Services spécialisés': '🔧',
+      'Forfaits':             '📦'
     };
+    const UNIT_LABELS = { h: 'Heure', min: 'Minute', unite: 'Unité' };
+
+    let prestationsCache = [];
+    let pendingDeletePrestId = null;
+
+    function categoryIcon(cat) { return CATEGORY_ICONS[cat] || '🌿'; }
 
     // ── Chargement ────────────────────────────────────────────
+    async function loadPrestationsAdmin() {
+      try {
+        prestationsCache = await dbGetPrestations();
+      } catch (err) {
+        console.error('loadPrestationsAdmin:', err);
+        prestationsCache = [];
+      }
+      renderPrestationsAdmin();
+      refreshCategoriesDatalist();
+    }
+
+    function renderPrestationsAdmin() {
+      const list = document.getElementById('prestationsList');
+
+      if (prestationsCache.length === 0) {
+        list.innerHTML = `
+          <div class="empty-state" style="padding:var(--space-lg);">
+            <div class="empty-icon">🌿</div>
+            <p>Aucune prestation. Cliquez sur <strong>Nouvelle prestation</strong> pour en ajouter.</p>
+          </div>`;
+        return;
+      }
+
+      // Regroupement par catégorie (ordre conservé)
+      const groups = new Map();
+      prestationsCache.forEach(p => {
+        if (!groups.has(p.categorie)) groups.set(p.categorie, []);
+        groups.get(p.categorie).push(p);
+      });
+
+      let html = '';
+      groups.forEach((prests, cat) => {
+        html += `
+          <div class="prestation-admin-group">
+            <h3 class="prestation-admin-group-title">
+              <span>${categoryIcon(cat)}</span> ${sanitizeInput(cat)}
+              <span class="muted-count">(${prests.length})</span>
+            </h3>
+            <div class="prestation-admin-rows">
+              ${prests.map(p => `
+                <div class="prestation-admin-row">
+                  <div class="prestation-admin-info">
+                    <div class="prestation-admin-name">${sanitizeInput(p.nom)}</div>
+                    <div class="prestation-admin-meta">
+                      <span class="meta-price">${formatNum(p.prix)} €/${UNIT_LABELS[p.unite]?.toLowerCase() || p.unite}</span>
+                      ${p.tags ? `<span class="meta-tags">${
+                        p.tags.split(',').map(t => `<span class="tag">${sanitizeInput(t.trim())}</span>`).join('')
+                      }</span>` : ''}
+                    </div>
+                  </div>
+                  <div class="prestation-admin-actions">
+                    <button class="btn-icon" title="Modifier" onclick="openPrestationModal('${p.id}')">
+                      <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-icon btn-icon-danger" title="Supprimer"
+                      onclick="askDeletePrest('${p.id}', '${sanitizeInput(p.nom).replace(/'/g, "\\'")}')">
+                      <i class="fas fa-trash"></i>
+                    </button>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>`;
+      });
+
+      list.innerHTML = html;
+    }
+
+    function formatNum(n) {
+      const v = Number(n) || 0;
+      return v % 1 === 0 ? String(v) : v.toFixed(2).replace(/\.?0+$/, '');
+    }
+
+    function refreshCategoriesDatalist() {
+      const dl  = document.getElementById('categoriesList');
+      const cats = [...new Set(prestationsCache.map(p => p.categorie))].sort();
+      dl.innerHTML = cats.map(c => `<option value="${sanitizeInput(c)}">`).join('');
+    }
+
+    // ── Modal ajout / édition ─────────────────────────────────
+    function openPrestationModal(id = null) {
+      document.getElementById('prestFormError').style.display = 'none';
+      document.getElementById('prestEditId').value = id || '';
+      document.getElementById('prestationModalTitle').textContent = id ? 'Modifier la prestation' : 'Nouvelle prestation';
+
+      if (id) {
+        const p = prestationsCache.find(x => x.id === id);
+        if (!p) return;
+        document.getElementById('prestNom').value       = p.nom        || '';
+        document.getElementById('prestCategorie').value = p.categorie  || '';
+        document.getElementById('prestUnite').value     = p.unite      || 'h';
+        document.getElementById('prestPrix').value      = p.prix       ?? '';
+        document.getElementById('prestOrdre').value     = p.ordre      ?? 100;
+        document.getElementById('prestTags').value      = p.tags       || '';
+      } else {
+        document.getElementById('prestNom').value       = '';
+        document.getElementById('prestCategorie').value = '';
+        document.getElementById('prestUnite').value     = 'h';
+        document.getElementById('prestPrix').value      = '';
+        document.getElementById('prestOrdre').value     = 100;
+        document.getElementById('prestTags').value      = '';
+      }
+      document.getElementById('prestationModal').classList.add('active');
+      document.getElementById('prestNom').focus();
+    }
+
+    function closePrestationModal() {
+      document.getElementById('prestationModal').classList.remove('active');
+    }
+
+    function handlePrestationModalClick(e) {
+      if (e.target === document.getElementById('prestationModal')) closePrestationModal();
+    }
+
+    async function savePrestation() {
+      const errEl  = document.getElementById('prestFormError');
+      const errMsg = document.getElementById('prestFormErrorMsg');
+      const btn    = document.getElementById('btnSavePrestation');
+      errEl.style.display = 'none';
+
+      const nom       = validateText(document.getElementById('prestNom').value);
+      const categorie = validateText(document.getElementById('prestCategorie').value, 50) || 'Autres';
+      const unite     = document.getElementById('prestUnite').value;
+      const prix      = parseFloat(document.getElementById('prestPrix').value);
+      const ordre     = parseInt(document.getElementById('prestOrdre').value, 10);
+      const tags      = validateText(document.getElementById('prestTags').value, 200);
+      const editId    = document.getElementById('prestEditId').value;
+
+      if (!nom) { errMsg.textContent = 'Le nom est obligatoire.'; errEl.style.display = 'flex'; return; }
+      if (!['h','min','unite'].includes(unite)) { errMsg.textContent = 'Unité invalide.'; errEl.style.display = 'flex'; return; }
+      if (isNaN(prix) || prix < 0) { errMsg.textContent = 'Prix invalide.'; errEl.style.display = 'flex'; return; }
+
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <span>Enregistrement…</span>';
+
+      try {
+        const payload = { nom, categorie, unite, prix, tags, ordre: Number.isFinite(ordre) ? ordre : 100 };
+        if (editId) await dbUpdatePrestation(editId, payload);
+        else        await dbAddPrestation(payload);
+        await loadPrestationsAdmin();
+        closePrestationModal();
+      } catch (err) {
+        errMsg.textContent = 'Erreur Supabase : ' + (err.message || '');
+        errEl.style.display = 'flex';
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save"></i> <span>Enregistrer</span>';
+      }
+    }
+
+    // ── Suppression ──────────────────────────────────────────
+    function askDeletePrest(id, nom) {
+      pendingDeletePrestId = id;
+      document.getElementById('deletePrestName').textContent = nom;
+      document.getElementById('deletePrestModal').classList.add('active');
+    }
+
+    function closeDeletePrestModal() {
+      pendingDeletePrestId = null;
+      document.getElementById('deletePrestModal').classList.remove('active');
+    }
+
+    function handleDeletePrestModalClick(e) {
+      if (e.target === document.getElementById('deletePrestModal')) closeDeletePrestModal();
+    }
+
+    async function confirmDeletePrest() {
+      if (!pendingDeletePrestId) return;
+      try {
+        await dbDeletePrestation(pendingDeletePrestId);
+        closeDeletePrestModal();
+        await loadPrestationsAdmin();
+      } catch (err) {
+        alert('Erreur suppression : ' + (err.message || ''));
+      }
+    }
+
+    // ── Km / TVA / Auth ──────────────────────────────────────
     function getStoredPrices() {
       try { return JSON.parse(localStorage.getItem(PRICES_KEY) || '{}'); }
       catch { return {}; }
     }
 
-    function buildTable() {
-      const stored = getStoredPrices();
-      const tbody  = document.getElementById('prestationsBody');
-      tbody.innerHTML = PRESTATIONS_DEF.map((p, i) => {
-        const price = stored[i] !== undefined ? stored[i] : p.defaultPrice;
-        const groupLabel = GROUP_LABELS[i]
-          ? `<tr><td colspan="3" class="group-separator">${GROUP_LABELS[i]}</td></tr>` : '';
-        return `${groupLabel}
-          <tr>
-            <td>${p.name}</td>
-            <td><span class="unit-badge">${p.unit}</span></td>
-            <td class="td-price">
-              <input
-                type="number"
-                class="price-input"
-                id="price-${i}"
-                value="${price}"
-                min="0"
-                step="0.5"
-                max="9999"
-              >
-            </td>
-          </tr>`;
-      }).join('');
-    }
-
     function loadKmRate() {
       const stored = getStoredPrices();
       document.getElementById('kmRate').value = stored['km'] !== undefined ? stored['km'] : 0.25;
+    }
+
+    function saveKmRate() {
+      const prices = getStoredPrices();
+      const km = parseFloat(document.getElementById('kmRate').value);
+      prices['km'] = isNaN(km) || km < 0 ? 0.25 : km;
+      localStorage.setItem(PRICES_KEY, JSON.stringify(prices));
+      flashFeedback('pricesSaved');
     }
 
     function loadTva() {
@@ -253,27 +479,6 @@
       const user = await getCurrentUser();
       const el   = document.getElementById('userEmail');
       el.textContent = user?.email || '— non connecté —';
-    }
-
-    // ── Sauvegarde prix ───────────────────────────────────────
-    function savePrices() {
-      const prices = getStoredPrices();
-      PRESTATIONS_DEF.forEach((_, i) => {
-        const val = parseFloat(document.getElementById(`price-${i}`).value);
-        prices[i] = isNaN(val) || val < 0 ? 0 : val;
-      });
-      const km = parseFloat(document.getElementById('kmRate').value);
-      prices['km'] = isNaN(km) || km < 0 ? 0.25 : km;
-      localStorage.setItem(PRICES_KEY, JSON.stringify(prices));
-      flashFeedback('pricesSaved');
-    }
-
-    function resetPrices() {
-      if (!confirm('Réinitialiser tous les tarifs aux valeurs par défaut ?')) return;
-      localStorage.removeItem(PRICES_KEY);
-      buildTable();
-      loadKmRate();
-      flashFeedback('pricesSaved');
     }
 
     // ── Sauvegarde TVA ────────────────────────────────────────
@@ -340,10 +545,17 @@
     }
 
     // ── Init ──────────────────────────────────────────────────
-    buildTable();
+    loadPrestationsAdmin();
     loadKmRate();
     loadTva();
     loadAuth();
+
+    // Esc pour fermer les modales
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Escape') return;
+      if (document.getElementById('prestationModal').classList.contains('active')) closePrestationModal();
+      if (document.getElementById('deletePrestModal').classList.contains('active')) closeDeletePrestModal();
+    });
   </script>
 </body>
 </html>
